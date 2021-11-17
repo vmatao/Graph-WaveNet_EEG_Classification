@@ -122,8 +122,6 @@ class gwnet(nn.Module):
                 if self.gcn_bool:
                     self.gconv.append(gcn(dilation_channels,residual_channels,dropout,support_len=self.supports_len))
 
-
-
         self.end_conv_1 = nn.Conv2d(in_channels=skip_channels,
                                   out_channels=end_channels,
                                   kernel_size=(1,1),
@@ -135,6 +133,10 @@ class gwnet(nn.Module):
                                     bias=True)
 
         self.receptive_field = receptive_field
+
+        self.lin = nn.Linear(26, 4)
+
+        self.softmax = nn.Softmax(2)
 
 
 
@@ -196,13 +198,13 @@ class gwnet(nn.Module):
                 x = self.residual_convs[i](x)
 
             x = x + residual[:, :, :, -x.size(3):]
-
-
             x = self.bn[i](x)
-
         x = F.relu(skip)
         x = F.relu(self.end_conv_1(x))
         x = self.end_conv_2(x)
+        # x = torch.flatten(x, 2)
+        # x = self.lin(x)
+        # x = self.softmax(x)
         return x
 
 
