@@ -1,6 +1,8 @@
 import pickle
 import numpy as np
 import os
+
+import pandas as pd
 import scipy.sparse as sp
 import torch
 from scipy.sparse import linalg
@@ -28,10 +30,19 @@ class DataLoader(object):
         self.ys = ys
 
     def shuffle(self):
+        #, df
         permutation = np.random.permutation(self.size)
+        # TODO permutate ie the same way the xs is permutated
         xs, ys = self.xs[permutation], self.ys[permutation]
         self.xs = xs
         self.ys = ys
+        # new_df = pd.DataFrame(columns=["idx","event"])
+        # for i in range(0,len(permutation)):
+        #     if i in df.idx.values:
+        #         a = permutation[i]
+        #         b = df.loc[df['idx'] == i].iat[0,1]
+        #         new_df.loc[len(new_df.index)]=[a,b]
+        # return new_df
 
     def get_iterator(self):
         self.current_ind = 0
@@ -144,9 +155,14 @@ def load_adj(pkl_filename, adjtype):
 def load_dataset(dataset_dir, batch_size, valid_batch_size= None, test_batch_size=None):
     data = {}
     for category in ['train', 'val', 'test']:
-        cat_data = np.load(os.path.join(dataset_dir, category + '.npz'))
+        np_load_old = np.load
+        np.load = lambda *a, **k: np_load_old(*a, allow_pickle=True, **k)
+        # cat_data = np.load(os.path.join(dataset_dir, category + 'ww.npz'))
+        cat_data = np.load(os.path.join(dataset_dir, category + 'ww.npz'))
+        np.load = np_load_old
         data['x_' + category] = cat_data['x']
         data['y_' + category] = cat_data['y']
+    a = data['x_train'][..., 0]
     scaler = StandardScaler(mean=data['x_train'][..., 0].mean(), std=data['x_train'][..., 0].std())
     # Data format
     for category in ['train', 'val', 'test']:

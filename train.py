@@ -1,3 +1,4 @@
+import pandas as pd
 import torch
 import numpy as np
 import argparse
@@ -15,10 +16,10 @@ parser.add_argument('--gcn_bool', action='store_true', help='whether to add grap
 parser.add_argument('--aptonly', action='store_true', help='whether only adaptive adj')
 parser.add_argument('--addaptadj', action='store_true', help='whether add adaptive adj')
 parser.add_argument('--randomadj', action='store_true', help='whether random initialize adaptive adj')
-parser.add_argument('--seq_length', type=int, default=12, help='')
+parser.add_argument('--seq_length', type=int, default=25, help='')
 parser.add_argument('--nhid', type=int, default=32, help='')
 parser.add_argument('--in_dim', type=int, default=1, help='inputs dimension')
-parser.add_argument('--num_nodes', type=int, default=207, help='number of nodes')
+parser.add_argument('--num_nodes', type=int, default=26, help='number of nodes')
 parser.add_argument('--batch_size', type=int, default=64, help='batch size')
 parser.add_argument('--learning_rate', type=float, default=0.001, help='learning rate')
 parser.add_argument('--dropout', type=float, default=0.3, help='dropout rate')
@@ -60,6 +61,7 @@ def main():
     his_loss = []
     val_time = []
     train_time = []
+    a01 = pd.read_csv("A01Tie.csv")
     for i in range(1, args.epochs + 1):
         # if i % 10 == 0:
         # lr = max(0.000002,args.learning_rate * (0.1 ** (i // 10)))
@@ -68,15 +70,16 @@ def main():
         train_loss = []
         train_mape = []
         train_rmse = []
-        t1 = time.time()
+        # a01 = dataloader['train_loader'].shuffle(a01)
         dataloader['train_loader'].shuffle()
+        t1 = time.time()
         for iter, (x, y) in enumerate(dataloader['train_loader'].get_iterator()):
             trainx = torch.Tensor(x).to(device)
             trainx = trainx.transpose(1, 3)
             trainy = torch.Tensor(y).to(device)
             trainy = trainy.transpose(1, 3)
             a = trainy[:, 0, :, :]
-            metrics = engine.train(trainx, a)
+            metrics = engine.train(trainx, trainy)
             train_loss.append(metrics[0])
             train_mape.append(metrics[1])
             train_rmse.append(metrics[2])
