@@ -65,6 +65,7 @@ class gwnet(nn.Module):
         self.skip_convs = nn.ModuleList()
         self.bn = nn.ModuleList()
         self.gconv = nn.ModuleList()
+        self.size = 0
 
         self.start_conv = nn.Conv2d(in_channels=in_dim,
                                     out_channels=residual_channels,
@@ -136,7 +137,8 @@ class gwnet(nn.Module):
         self.receptive_field = receptive_field
 
         # TODO replace first of linear with shape
-        self.lin = nn.Linear(300, 4)
+
+        self.lin = nn.Linear(195800, 4)
 
         self.softmax = nn.Softmax(1)
 
@@ -197,18 +199,21 @@ class gwnet(nn.Module):
                 x = self.residual_convs[i](x)
 
             x = x + residual[:, :, :, -x.size(3):]
+
             x = self.bn[i](x)
+
         x = F.relu(skip)
         x = F.relu(self.end_conv_1(x))
         x = self.end_conv_2(x)
 
         return x
 
-    # TODO rest after inverse transform
     def rest_of_operations(self, x, scaler):
         x = scaler.inverse_transform(x)
         x = torch.flatten(x, 2)
         x = torch.flatten(x, 1)
+        if list(x.shape)[1] != 42900:
+            a = 1 - 1
         x = self.lin(x)
         x = self.softmax(x)
         return x

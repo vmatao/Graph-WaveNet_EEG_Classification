@@ -2,6 +2,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
+from sklearn.model_selection import StratifiedShuffleSplit
 
 import argparse
 import pickle
@@ -34,13 +35,13 @@ def generate_adj_mx(df):
         y2 = df_coord.loc[df_coord[0] == row[1], 2].iloc[0]
         sum = ((x1 - x2) ** 2 + (y1 - y2) ** 2) ** 0.5
         # df_matrix.at[index, "3"] = ((x1 - x2) ** 2 + (y1 - y2) ** 2) ** 0.5
-        if sum == 0:
+        distance = 2
+        if sum > distance:
+            df_matrix.at[index, "3"] = 0
+        elif sum == 0:
             df_matrix.at[index, "3"] = 1
-        elif sum == 1:
-            df_matrix.at[index, "3"] = 0.5
-        elif sum == 2:
-            df_matrix.at[index, "3"] = 0.25
-
+        else:
+            df_matrix.at[index, "3"] = (distance - sum) / distance
         # elif row[0] == 25 and row[1] == 25:
         #     df_matrix.at[index, "3"] = 1
     df_matrix = df_matrix.pivot(index='1', columns='2')
@@ -83,36 +84,44 @@ def generate_adj_mx(df):
 def get_events_indexes_cut_windows(df):
     df = df.reset_index(drop=True)
     idx = df.index[(df['event'] >= 7) & (df['event'] <= 10)].tolist()
-    n = 20
+    n = 90
     print(len(df))
-    new_df = df.iloc[np.unique(np.concatenate([np.arange(max(i - n, 0), min(i + (n / 4) + 1, len(df))) for i in idx]))]
+    # concat slices of data around events
+    new_df = df.iloc[np.unique(np.concatenate([np.arange(max(i - n, 0), min(i + (n / 3), len(df))) for i in idx]))]
     new_df = new_df.reset_index(drop=True)
     idx = new_df.index[(new_df['event'] >= 7) & (new_df['event'] <= 10)].tolist()
 
+    # get events from index that is known to be movement
     events = []
     for index in idx:
         a = new_df.iloc[[index]]
         a = a.iat[0, 25]
         events.append(a)
-    final_df = pd.DataFrame(columns=['idx', 'event'])
-    counter = 0
+    event_df_y = pd.DataFrame(columns=['index', 'event'])
     for i in range(0, len(idx)):
-        for j in range(20, -6,-1):
-            final_df.loc[counter] = [idx[i]-j, events[i]]
-            counter += 1
-
+        temp_df = pd.DataFrame(columns=['event'], index=np.arange(n + int(n / 3)))
+        temp_df['event'] = events[i]
+        temp_df.reset_index(inplace=True)
+        event_df_y = pd.concat([event_df_y, temp_df])
         # if indexa == 1:
-    final_df.to_csv("allExpIE.csv", index=False)
-    return new_df
+    event_df_y = event_df_y.reset_index(drop=True)
+    event_df_y.drop(event_df_y.columns[0], axis=1, inplace=True)
+    event_df_y.to_csv("allExpIE.csv", index=False)
+    event_df_y = event_df_y.sort_index()
+    print(event_df_y.groupby(["event"]).size())
+    d = {7: [1, 0, 0, 0], 8: [0, 1, 0, 0], 9: [0, 0, 1, 0], 10: [0, 0, 0, 1]}
+    event_df_y.event = event_df_y.event.map(d)
+    return new_df, event_df_y
 
 
 def generate_graph_seq2seq_io_data(
         # """indexa,"""
-        df, x_offsets, y_offsets, add_time_in_day=False, add_day_in_week=False, scaler=None
+        df, event_df_y, x_offsets, y_offsets, add_time_in_day=False, add_day_in_week=False, scaler=None
 ):
     """
     Generate samples from
     :param df:
+    :param event_df_y:
     :param x_offsets:
     :param y_offsets:
     :param add_time_in_day:
@@ -124,7 +133,6 @@ def generate_graph_seq2seq_io_data(
     """
     # indexa
     # df, events = cut_windows(df,20,5)
-
     num_samples, num_nodes = df.shape
     data = np.expand_dims(df.values, axis=-1)
     feature_list = [data]
@@ -138,14 +146,44 @@ def generate_graph_seq2seq_io_data(
         feature_list.append(dow_tiled)
 
     data = np.concatenate(feature_list, axis=-1)
-    x, y = [], []
+    x = []
+    y = []
     min_t = abs(min(x_offsets))
     max_t = abs(num_samples - abs(max(y_offsets)))  # Exclusive
+    checkcounter = 1
+    lastevent = []
+    hundred = 0
     for t in range(min_t, max_t):  # t is the index of the last observation.
-        x.append(data[t + x_offsets, ...])
-        y.append(data[t + y_offsets, ...])
+        if hundred > 0 and t + hundred < max_t:
+            hundred -= 1
+            continue
+        a = event_df_y["event"].iloc[t]
+        if checkcounter == 21:
+            checkcounter = 1
+            if a != lastevent:
+                lastevent = a
+            elif a == lastevent:
+                hundred = 99
+                continue
+        b = event_df_y["event"].iloc[t + x_offsets[0]]
+        if event_df_y["event"].iloc[t] == event_df_y["event"].iloc[t + x_offsets[0]]:
+            checkcounter += 1
+            x.append(data[t + x_offsets, ...])
+            y.append(event_df_y["event"].iloc[t])
+
+        # if checkcounter != 1 and checkcounter < 22:
+        #     checkcounter += 1
+        #     continue
+        # if hundred > 0 and t + hundred < max_t:
+        #     hundred -= 1
+        #     continue
+        # if checkcounter == 22 or checkcounter == 1:
+        #     checkcounter = 2
+        #     x.append(data[t + x_offsets, ...])
+        #     y.append(event_df_y["event"].iloc[t])
+        #     hundred = 99
+
     x = np.stack(x, axis=0)
-    y = np.stack(y, axis=0)
     return x, y
 
 
@@ -156,19 +194,22 @@ def prep_df(df):
     event_dict = {'IdleEEG eyes open': 3, 'IdleEEG eyes closed': 4, 'Start of trial': 6,
                   'LH': 7, 'RH': 8, 'FT': 9, 'Ton': 10, 'Rej': 1, 'Eye mov': 2, "STaRT": 5}
 
-    df = get_events_indexes_cut_windows(df)
+    df, event_df_y = get_events_indexes_cut_windows(df)
     df.drop(df.columns[25], axis=1, inplace=True)
-
     df.drop(df.columns[24], axis=1, inplace=True)
     df.drop(df.columns[23], axis=1, inplace=True)
     df.drop(df.columns[22], axis=1, inplace=True)
 
-    return df
+    return df, event_df_y
 
 
 def load_all_experiments():
+    # TODO deprecated stuff
     app_df = pandas.DataFrame()
     for i in range(1, 10):
+        if i == 4:
+            continue
+        print(i)
         raw = mne.io.read_raw_gdf("Data Bci competition/A0" + str(i) + "T.gdf")
         temp_df = raw.to_data_frame(time_format=None)
         events = mne.events_from_annotations(raw)
@@ -198,7 +239,7 @@ def generate_train_val_test(args):
     # raw = mne.io.read_raw_gdf("Data Bci competition/A01T.gdf")
     # raw_T = mne.io.read_raw_gdf("Data Bci competition/A02T.gdf")
     app_df = load_all_experiments()
-    df = prep_df(app_df)
+    df, event_df_y = prep_df(app_df)
     generate_adj_mx(df)
 
     # df = pd.read_hdf(args.traffic_df_filename)
@@ -212,6 +253,7 @@ def generate_train_val_test(args):
     # indexa = 1
     x, y = generate_graph_seq2seq_io_data(
         df,
+        event_df_y,
         x_offsets=x_offsets,
         y_offsets=y_offsets,
         add_time_in_day=False,
@@ -228,11 +270,15 @@ def generate_train_val_test(args):
     #     indexa=indexa,
     # )
 
-    print("x shape: ", x.shape, ", y shape: ", y.shape)
+    print("x shape: ", x.shape, ", y shape: ", len(y))
     # Write the data into npz file.
+    # np.random.seed(99)
     num_samples = x.shape[0]
-    num_test = round(num_samples * 0.2)
-    num_train = round(num_samples * 0.7)
+    # permutation = np.random.permutation(num_samples)
+    # y = np.asarray(y)
+    # x, y = x[permutation], y[permutation]
+    num_test = round(num_samples * 0.25)
+    num_train = round(num_samples * 0.625)
     num_val = num_samples - num_test - num_train
     # x_train, y_train = x, y
     x_train, y_train = x[:num_train], y[:num_train]
@@ -242,16 +288,15 @@ def generate_train_val_test(args):
     )
     x_test, y_test = x[-num_test:], y[-num_test:]
     # x_test, y_test = x_t, y_t
-
+    asdfsadf = pd.DataFrame(y_train, columns=["0", "1", "2", "3"])
+    print(asdfsadf.groupby(["0", "1", "2", "3"]).size())
     for cat in ["train", "val", "test"]:
         _x, _y = locals()["x_" + cat], locals()["y_" + cat]
-        print(cat, "x: ", _x.shape, "y:", _y.shape)
+        print(cat, "x: ", _x.shape, "y:", len(_y))
         np.savez_compressed(
             os.path.join(args.output_dir, f"{cat}22.npz"),
             x=_x,
             y=_y,
-            x_offsets=x_offsets.reshape(list(x_offsets.shape) + [1]),
-            y_offsets=y_offsets.reshape(list(y_offsets.shape) + [1]),
         )
 
 
@@ -268,9 +313,9 @@ if __name__ == "__main__":
     #                     help="Index event.", )
     # parser.add_argument("--index_event_output1", type=str, default="A02Tie.csv",
     #                     help="Index event.", )
-    # TODO 25 maybe 0.004s *25 = 0.1
-    parser.add_argument("--seq_length_x", type=int, default=12, help="Sequence Length.", )
-    parser.add_argument("--seq_length_y", type=int, default=12, help="Sequence Length.", )
+    # 0.004s
+    parser.add_argument("--seq_length_x", type=int, default=100, help="Sequence Length.", )
+    parser.add_argument("--seq_length_y", type=int, default=100, help="Sequence Length.", )
     parser.add_argument("--y_start", type=int, default=1, help="Y pred start", )
     parser.add_argument("--dow", action='store_true', )
 

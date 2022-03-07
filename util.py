@@ -8,6 +8,7 @@ import torch
 from scipy.sparse import linalg
 import tensorflow as tf
 
+
 class DataLoader(object):
     def __init__(self, xs, ys, batch_size, pad_with_last_sample=True):
         """
@@ -29,18 +30,30 @@ class DataLoader(object):
         self.xs = xs
         self.ys = ys
 
-    def shuffle(self, df):
+    def shuffle(self):
         permutation = np.random.permutation(self.size)
         xs, ys = self.xs[permutation], self.ys[permutation]
         self.xs = xs
         self.ys = ys
-        new_df = pd.DataFrame(columns=["idx", "event"])
-        for i in range(0, len(permutation)):
-            if i in df.idx.values:
-                a = permutation[i]
-                b = df.loc[df['idx'] == i].iat[0, 1]
-                new_df.loc[len(new_df.index)] = [a, b]
-        return new_df
+        # new_df = pd.DataFrame(columns=["idx", "event"])
+        # for i in range(0, len(permutation)):
+        #     if i in df.idx.values:
+        #         a = permutation[i]
+        #         b = df.loc[df['idx'] == i].iat[0, 1]
+        #         new_df.loc[len(new_df.index)] = [a, b]
+        # df = df.set_index("idx")
+        # df = df.sort_index()
+        #
+        # new_df = new_df.set_index("idx")
+        # new_df = new_df.sort_index()
+        # d = {7: [1, 0, 0, 0], 8: [0, 1, 0, 0], 9: [0, 0, 1, 0], 10: [0, 0, 0, 1]}
+        # df.event = df.event.map(d)
+        # df.to_pickle("rest.pkl")
+        # try:
+        #     new_df.event = new_df.event.map(d)
+        # except:
+        #     print("new_df.event = new_df.event.map(d)")
+        # self.shuffled_df = new_df.copy()
 
     def get_iterator(self):
         self.current_ind = 0
@@ -51,7 +64,8 @@ class DataLoader(object):
                 end_ind = min(self.size, self.batch_size * (self.current_ind + 1))
                 x_i = self.xs[start_ind: end_ind, ...]
                 y_i = self.ys[start_ind: end_ind, ...]
-                yield (x_i, y_i)
+
+                yield x_i, y_i
                 self.current_ind += 1
 
         return _wrapper()
@@ -161,7 +175,7 @@ def load_dataset(dataset_dir, batch_size, valid_batch_size=None, test_batch_size
         # np_load_old = np.load
         # np.load = lambda *a, **k: np_load_old(*a, allow_pickle=True, **k)
         # cat_data = np.load(os.path.join(dataset_dir, category + 'ww.npz'))
-        cat_data = np.load(os.path.join(dataset_dir, category + '.npz'))
+        cat_data = np.load(os.path.join(dataset_dir, category + '22.npz'))
         # np.load = np_load_old
         data['x_' + category] = cat_data['x']
         data['y_' + category] = cat_data['y']
@@ -223,68 +237,6 @@ def masked_mape(preds, labels, null_val=np.nan):
 
 
 def accuracy(preds, labels):
-    # preds[preds > 0.4] = 1
-    # preds[preds <= 0.4] = 0
-    #
-    # zero = preds[:,0]
-    # one = preds[:,1]
-    # two = preds[:,2]
-    # three = preds[:,3]
-    # four = preds[:,4]
-    # zero_l = labels[:,0]
-    # one_l = labels[:,1]
-    # two_l = labels[:,2]
-    # three_l = labels[:,3]
-    # four_l = labels[:,4]
-    #
-    # zero_l = zero_l.detach().clone()
-    # zero_l[zero_l == 0] = 2
-    # one_l = one_l.detach().clone()
-    # one_l[one_l == 0] = 2
-    # two_l = two_l.detach().clone()
-    # two_l[two_l == 0] = 2
-    # three_l = three_l.detach().clone()
-    # three_l[three_l == 0] = 2
-    # four_l = four_l.detach().clone()
-    # four_l[four_l == 0] = 2
-    #
-    # count_zero = torch.sum(torch.eq(zero, zero_l).int()).item()
-    # count_one = torch.sum(torch.eq(one, one_l).int()).item()
-    # count_two = torch.sum(torch.eq(two, two_l).int()).item()
-    # count_three = torch.sum(torch.eq(three, three_l).int()).item()
-    # count_four = torch.sum(torch.eq(four, four_l).int()).item()
-    #
-    # denom_zero_l = zero_l[zero_l == 1].size(dim=0)
-    # denom_one_l = one_l[one_l == 1].size(dim=0)
-    # denom_two_l = two_l[two_l == 1].size(dim=0)
-    # denom_three_l = three_l[three_l == 1].size(dim=0)
-    # denom_four_l = four_l[four_l == 1].size(dim=0)
-    #
-    #
-    # dict_acc_ev = {}
-    # if denom_zero_l!=0:
-    #     acc_zero = count_zero / denom_zero_l
-    #     dict_acc_ev["7"] = acc_zero
-    # if denom_one_l != 0:
-    #     acc_one = count_one / denom_one_l
-    #     dict_acc_ev["8"] = acc_one
-    # if denom_two_l != 0:
-    #     acc_two = count_two / denom_two_l
-    #     dict_acc_ev["9"] = acc_two
-    # if denom_three_l != 0:
-    #     acc_three = count_three / denom_three_l
-    #     dict_acc_ev["10"] = acc_three
-    # if denom_four_l != 0:
-    #     acc_four = count_four / denom_four_l
-    #     dict_acc_ev["0"] = acc_four
-    #
-    # events_pred = torch.max(preds, 1).indices
-    # labels_pred = torch.max(labels, 1).indices
-    # correct_preds = torch.eq(events_pred, labels_pred)
-    # as_ints = correct_preds.int()
-    # count = torch.sum(as_ints,dim=0)
-    # a = as_ints.size(dim=0)
-    # result = count.item() / a
     dict_acc_ev = {}
     # , '4'
     classes = ('0', '1', '2', '3')
@@ -311,7 +263,7 @@ def accuracy(preds, labels):
         _, predictions = torch.max(preds, 1)
         _, labels_val = torch.max(labels, 1)
         # if torch.max(_) != 0:
-            # collect the correct predictions for each class
+        # collect the correct predictions for each class
         for label, prediction in zip(labels_val, predictions):
             if label == prediction:
                 correct_pred[classes[label]] += 1
@@ -321,7 +273,7 @@ def accuracy(preds, labels):
     for classname, correct_count in correct_pred.items():
         if total_pred[classname] != 0:
             accuracy = 100 * float(correct_count) / total_pred[classname]
-            dict_acc_ev[classname]=accuracy
+            dict_acc_ev[classname] = accuracy
             # print(total_pred[classname])
             # if accuracy > 0:
             #     print(classname + " "+str(accuracy))

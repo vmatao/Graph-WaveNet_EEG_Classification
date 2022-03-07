@@ -1,8 +1,12 @@
+import pickle
+
 import pandas as pd
 import torch
 import numpy as np
 import argparse
 import time
+import torch.nn as nn
+
 import util
 import matplotlib.pyplot as plt
 from engine import trainer
@@ -16,11 +20,11 @@ parser.add_argument('--gcn_bool', action='store_true', help='whether to add grap
 parser.add_argument('--aptonly', action='store_true', help='whether only adaptive adj')
 parser.add_argument('--addaptadj', action='store_true', help='whether add adaptive adj')
 parser.add_argument('--randomadj', action='store_true', help='whether random initialize adaptive adj')
-parser.add_argument('--seq_length', type=int, default=12, help='')
+parser.add_argument('--seq_length', type=int, default=100, help='')
 parser.add_argument('--nhid', type=int, default=32, help='')
 parser.add_argument('--in_dim', type=int, default=1, help='inputs dimension')
 parser.add_argument('--num_nodes', type=int, default=22, help='number of nodes')
-parser.add_argument('--batch_size', type=int, default=64, help='batch size')
+parser.add_argument('--batch_size', type=int, default=32, help='batch size')
 parser.add_argument('--learning_rate', type=float, default=0.001, help='learning rate')
 parser.add_argument('--dropout', type=float, default=0.3, help='dropout rate')
 parser.add_argument('--weight_decay', type=float, default=0.0001, help='weight decay rate')
@@ -52,14 +56,15 @@ def main():
 
     if args.aptonly:
         supports = None
+
     engine = trainer(scaler, args.in_dim, args.seq_length, args.num_nodes, args.nhid, args.dropout,
                      args.learning_rate, args.weight_decay, device, supports, args.gcn_bool, args.addaptadj,
                      adjinit)
+
     print("start training...", flush=True)
     his_loss = []
     val_time = []
     train_time = []
-    a01 = pd.read_csv("allExpIE.csv")
     save_iter = 0
     for i in range(1, args.epochs + 1):
         # if i % 10 == 0:
@@ -72,28 +77,16 @@ def main():
         train_acc = []
         train_acc_dict = []
         t1 = time.time()
-        a01 = dataloader['train_loader'].shuffle(a01)
+        dataloader['train_loader'].shuffle()
         for iter, (x, y) in enumerate(dataloader['train_loader'].get_iterator()):
             trainx = torch.Tensor(x).to(device)
             trainx = trainx.transpose(1, 3)
-            # trainy = torch.Tensor(y).to(device)
+            # with open("real_val", "rb") as fp:  # Unpickling
+            #     batch_real_val = pickle.load(fp)
+            # batch_real_val = dataloader['train_loader'].get_real_val()
+            trainy = torch.Tensor(y).to(device)
             # trainy = trainy.transpose(1, 3)
             # a=trainy[:,0,:,:]
-            batch_real_val = []
-            for idxs in range(iter * args.batch_size, iter * args.batch_size + args.batch_size):
-                if idxs in a01.idx.values:
-                    event = a01.loc[a01['idx'] == idxs].iat[0, 1]
-                    if event == 7:
-                        batch_real_val.append([1, 0, 0, 0])
-                    elif event == 8:
-                        batch_real_val.append([0, 1, 0, 0])
-                    elif event == 9:
-                        batch_real_val.append([0, 0, 1, 0])
-                    elif event == 10:
-                        batch_real_val.append([0, 0, 0, 1])
-                # else:
-                #     batch_real_val.append([0, 0, 0, 0, 1])
-            trainy = torch.Tensor(batch_real_val).to(device)
             metrics = engine.train(trainx, trainy)
             train_loss.append(metrics[0])
             # train_mape.append(metrics[1])
@@ -127,23 +120,8 @@ def main():
         for iter, (x, y) in enumerate(dataloader['val_loader'].get_iterator()):
             testx = torch.Tensor(x).to(device)
             testx = testx.transpose(1, 3)
-            # testy = torch.Tensor(y).to(device)
+            testy = torch.Tensor(y).to(device)
             # testy = testy.transpose(1, 3)
-            batch_real_val = []
-            for idxs in range(iter * args.batch_size + save_iter, iter * args.batch_size + args.batch_size + save_iter):
-                if idxs in a01.idx.values:
-                    event = a01.loc[a01['idx'] == idxs].iat[0, 1]
-                    if event == 7:
-                        batch_real_val.append([1, 0, 0, 0])
-                    elif event == 8:
-                        batch_real_val.append([0, 1, 0, 0])
-                    elif event == 9:
-                        batch_real_val.append([0, 0, 1, 0])
-                    elif event == 10:
-                        batch_real_val.append([0, 0, 0, 1])
-                # else:
-                    # batch_real_val.append([0, 0, 0, 0, 1])
-            testy = torch.Tensor(batch_real_val).to(device)
 
             metrics = engine.eval(testx, testy)
             valid_loss.append(metrics[0])
@@ -154,7 +132,7 @@ def main():
             valid_acc_dict.append(metrics[2])
             if len(metrics[2].keys()) > 1:
                 print(metrics[2])
-            save_iter1 = iter * args.batch_size + save_iter
+            # save_iter1 = iter * args.batch_size + save_iter
         s2 = time.time()
         log = 'Epoch: {:03d}, Inference Time: {:.4f} secs'
         print(log.format(i, (s2 - s1)))
@@ -166,10 +144,14 @@ def main():
         mtrain_acc_dict = {}
         zero, one, two, three, four = [], [], [], [], []
         for dict in train_acc_dict:
-            zero.append(dict["0"])
-            one.append(dict["1"])
-            two.append(dict["2"])
-            three.append(dict["3"])
+            if dict.get('0', -1) != -1:
+                zero.append(dict["0"])
+            if dict.get('1', -1) != -1:
+                one.append(dict["1"])
+            if dict.get('2', -1) != -1:
+                two.append(dict["2"])
+            if dict.get('3', -1) != -1:
+                three.append(dict["3"])
         mtrain_acc_dict["0"] = np.mean(zero)
         mtrain_acc_dict["1"] = np.mean(one)
         mtrain_acc_dict["2"] = np.mean(two)
@@ -182,10 +164,15 @@ def main():
         mvalid_acc_dict = {}
         zero, one, two, three, four = [], [], [], [], []
         for dict in valid_acc_dict:
-            zero.append(dict["0"])
-            one.append(dict["1"])
-            two.append(dict["2"])
-            three.append(dict["3"])
+            if dict.get('0', -1) != -1:
+                zero.append(dict["0"])
+            if dict.get('1', -1) != -1:
+                one.append(dict["1"])
+            if dict.get('2', -1) != -1:
+                two.append(dict["2"])
+            if dict.get('3', -1) != -1:
+                three.append(dict["3"])
+
         mvalid_acc_dict["0"] = np.mean(zero)
         mvalid_acc_dict["1"] = np.mean(one)
         mvalid_acc_dict["2"] = np.mean(two)
@@ -214,29 +201,17 @@ def main():
     outputs = []
     # realy = torch.Tensor(dataloader['y_test']).to(device)
     # realy = realy.transpose(1, 3)[:, 0, :, :]
-    batch_real_val = []
+    # batch_real_val = []
     for iter, (x, y) in enumerate(dataloader['test_loader'].get_iterator()):
         testx = torch.Tensor(x).to(device)
         testx = testx.transpose(1, 3)
         with torch.no_grad():
             # .transpose(1, 3)
+            testx = nn.functional.pad(testx, (1, 0, 0, 0))
             preds = engine.model(testx)
             preds = engine.model.rest_of_operations(preds, scaler)
         outputs.append(preds.squeeze())
-        for idxs in range(iter * args.batch_size + save_iter1, iter * args.batch_size + args.batch_size + save_iter1):
-            if idxs in a01.idx.values:
-                event = a01.loc[a01['idx'] == idxs].iat[0, 1]
-                if event == 7:
-                    batch_real_val.append([1, 0, 0, 0])
-                elif event == 8:
-                    batch_real_val.append([0, 1, 0, 0])
-                elif event == 9:
-                    batch_real_val.append([0, 0, 1, 0])
-                elif event == 10:
-                    batch_real_val.append([0, 0, 0, 1])
-            # else:
-            #     batch_real_val.append([0, 0, 0, 0, 1])
-    realy = torch.Tensor(batch_real_val).to(device)
+    realy = torch.Tensor(y).to(device)
 
     yhat = torch.cat(outputs, dim=0)
     yhat = yhat[:realy.size(0), ...]
@@ -271,6 +246,7 @@ def main():
     print(acc_dict)
     torch.save(engine.model.state_dict(),
                args.save + "_exp" + str(args.expid) + "_best_" + str(round(his_loss[bestid], 2)) + ".pth")
+
 
 if __name__ == "__main__":
     t1 = time.time()
