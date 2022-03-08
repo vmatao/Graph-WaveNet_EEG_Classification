@@ -6,6 +6,7 @@ import numpy as np
 import argparse
 import time
 import torch.nn as nn
+from simple_model import OurNeuralNetwork
 
 import util
 import matplotlib.pyplot as plt
@@ -78,174 +79,195 @@ def main():
         train_acc_dict = []
         t1 = time.time()
         dataloader['train_loader'].shuffle()
+        size_needed = 0
         for iter, (x, y) in enumerate(dataloader['train_loader'].get_iterator()):
-            trainx = torch.Tensor(x).to(device)
-            trainx = trainx.transpose(1, 3)
-            # with open("real_val", "rb") as fp:  # Unpickling
-            #     batch_real_val = pickle.load(fp)
-            # batch_real_val = dataloader['train_loader'].get_real_val()
-            trainy = torch.Tensor(y).to(device)
-            # trainy = trainy.transpose(1, 3)
-            # a=trainy[:,0,:,:]
-            metrics = engine.train(trainx, trainy)
-            train_loss.append(metrics[0])
-            # train_mape.append(metrics[1])
-            # train_rmse.append(metrics[2])
-            # if metrics[1] >= 0:
-            train_acc.append(metrics[1])
-            train_acc_dict.append(metrics[2])
-            # if len(metrics[2].keys()) > 1:
-            #     print(metrics[2])
-            #     print(metrics[1])
-            if iter % args.print_every == 0:
-                # log = 'Iter: {:03d}, Train Loss: {:.4f}, Train MAPE: {:.4f}, Train RMSE: {:.4f}'
-                # print(log.format(iter, train_loss[-1], train_mape[-1], train_rmse[-1]), flush=True)
-                log = 'Iter: {:03d}, Train Loss: {:.4f}, Accuracy: {:.4f}'
-                # if len(train_acc) > 0:
-                print(log.format(iter, train_loss[-1], train_acc[-1], train_acc_dict[-1]), flush=True)
-                # if len(train_acc) > 0:
-                #     print(log.format(iter, train_loss[-1], -1), flush=True)
-            save_iter = iter
-        t2 = time.time()
-        train_time.append(t2 - t1)
-        # validation
-        valid_loss = []
-        # valid_mape = []
-        # valid_rmse = []
-        valid_acc = []
-        valid_acc_dict = []
-
-        save_iter1 = 0
-        s1 = time.time()
-        for iter, (x, y) in enumerate(dataloader['val_loader'].get_iterator()):
-            testx = torch.Tensor(x).to(device)
-            testx = testx.transpose(1, 3)
-            testy = torch.Tensor(y).to(device)
-            # testy = testy.transpose(1, 3)
-
-            metrics = engine.eval(testx, testy)
-            valid_loss.append(metrics[0])
-            # valid_mape.append(metrics[1])
-            # valid_rmse.append(metrics[2])
-            # if metrics[1] >= 0:
-            valid_acc.append(metrics[1])
-            valid_acc_dict.append(metrics[2])
-            if len(metrics[2].keys()) > 1:
-                print(metrics[2])
-            # save_iter1 = iter * args.batch_size + save_iter
-        s2 = time.time()
-        log = 'Epoch: {:03d}, Inference Time: {:.4f} secs'
-        print(log.format(i, (s2 - s1)))
-        val_time.append(s2 - s1)
-        mtrain_loss = np.mean(train_loss)
-        # mtrain_mape = np.mean(train_mape)
-        # mtrain_rmse = np.mean(train_rmse)
-        mtrain_acc = np.mean(train_acc)
-        mtrain_acc_dict = {}
-        zero, one, two, three, four = [], [], [], [], []
-        for dict in train_acc_dict:
-            if dict.get('0', -1) != -1:
-                zero.append(dict["0"])
-            if dict.get('1', -1) != -1:
-                one.append(dict["1"])
-            if dict.get('2', -1) != -1:
-                two.append(dict["2"])
-            if dict.get('3', -1) != -1:
-                three.append(dict["3"])
-        mtrain_acc_dict["0"] = np.mean(zero)
-        mtrain_acc_dict["1"] = np.mean(one)
-        mtrain_acc_dict["2"] = np.mean(two)
-        mtrain_acc_dict["3"] = np.mean(three)
-
-        mvalid_loss = np.mean(valid_loss)
-        # mvalid_mape = np.mean(valid_mape)
-        # mvalid_rmse = np.mean(valid_rmse)
-        mvalid_acc = np.mean(valid_acc)
-        mvalid_acc_dict = {}
-        zero, one, two, three, four = [], [], [], [], []
-        for dict in valid_acc_dict:
-            if dict.get('0', -1) != -1:
-                zero.append(dict["0"])
-            if dict.get('1', -1) != -1:
-                one.append(dict["1"])
-            if dict.get('2', -1) != -1:
-                two.append(dict["2"])
-            if dict.get('3', -1) != -1:
-                three.append(dict["3"])
-
-        mvalid_acc_dict["0"] = np.mean(zero)
-        mvalid_acc_dict["1"] = np.mean(one)
-        mvalid_acc_dict["2"] = np.mean(two)
-        mvalid_acc_dict["3"] = np.mean(three)
-        his_loss.append(mvalid_loss)
-
-        log = 'Epoch: {:03d}, Train Loss: {:.4f}, Train accuracy: {:.4f}, Valid Loss: {:.4f}, Valid accuracy: {:.4f}, ' \
-              'Training Time: {:.4f}/epoch '
-        # print(log.format(i, mtrain_loss, mtrain_mape, mtrain_rmse, mvalid_loss, mvalid_mape, mvalid_rmse, (t2 - t1)),
-        #       flush=True)
-        print(log.format(i, mtrain_loss, mtrain_acc, mvalid_loss, mvalid_acc, (t2 - t1)),
-              flush=True)
-        torch.save(engine.model.state_dict(),
-                   args.save + "_epoch_" + str(i) + "_" + str(round(mvalid_loss, 2)) + ".pth")
-        print("Train_dict: ")
-        print(mtrain_acc_dict)
-        print("Valid_dict: ")
-        print(mvalid_acc_dict)
-    print("Average Training Time: {:.4f} secs/epoch".format(np.mean(train_time)))
-    print("Average Inference Time: {:.4f} secs".format(np.mean(val_time)))
-
-    # testing
-    bestid = np.argmin(his_loss)
-    engine.model.load_state_dict(
-        torch.load(args.save + "_epoch_" + str(bestid + 1) + "_" + str(round(his_loss[bestid], 2)) + ".pth"))
-    outputs = []
-    # realy = torch.Tensor(dataloader['y_test']).to(device)
-    # realy = realy.transpose(1, 3)[:, 0, :, :]
-    # batch_real_val = []
-    for iter, (x, y) in enumerate(dataloader['test_loader'].get_iterator()):
-        testx = torch.Tensor(x).to(device)
-        testx = testx.transpose(1, 3)
-        with torch.no_grad():
-            # .transpose(1, 3)
-            testx = nn.functional.pad(testx, (1, 0, 0, 0))
-            preds = engine.model(testx)
-            preds = engine.model.rest_of_operations(preds, scaler)
-        outputs.append(preds.squeeze())
-    realy = torch.Tensor(y).to(device)
-
-    yhat = torch.cat(outputs, dim=0)
-    yhat = yhat[:realy.size(0), ...]
+            size_needed = x.shape
+            break
+        network = OurNeuralNetwork(size_needed)
+        big_y, big_x = np.empty(1), np.empty([32, 22])
+        for iter, (x, y) in enumerate(dataloader['train_loader'].get_iterator()):
+            x = x.reshape((32, 100, 22))
+            x = np.average(x, axis=1)
+            m = np.array([1, 2, 3, 4])
+            y = y * m
+            y = np.amax(y, axis=1)
+            y = np.subtract(y, 1)
+            if iter == 0:
+                big_y = y
+                big_x = x
+            else:
+                big_y = np.concatenate((y, big_y))
+                big_x = np.concatenate((x, big_x))
+            print(big_x.shape)
+            print(big_y.shape)
+        network.train(big_x, big_y)
+        #     trainx = torch.Tensor(x).to(device)
+        #     trainx = trainx.transpose(1, 3)
+        #     # with open("real_val", "rb") as fp:  # Unpickling
+        #     #     batch_real_val = pickle.load(fp)
+        #     # batch_real_val = dataloader['train_loader'].get_real_val()
+        #     trainy = torch.Tensor(y).to(device)
+        #     # trainy = trainy.transpose(1, 3)
+        #     # a=trainy[:,0,:,:]
+        #     metrics = engine.train(trainx, trainy)
+        #     train_loss.append(metrics[0])
+        #     # train_mape.append(metrics[1])
+        #     # train_rmse.append(metrics[2])
+        #     # if metrics[1] >= 0:
+        #     train_acc.append(metrics[1])
+        #     train_acc_dict.append(metrics[2])
+        #     # if len(metrics[2].keys()) > 1:
+        #     #     print(metrics[2])
+        #     #     print(metrics[1])
+        #     if iter % args.print_every == 0:
+        #         # log = 'Iter: {:03d}, Train Loss: {:.4f}, Train MAPE: {:.4f}, Train RMSE: {:.4f}'
+        #         # print(log.format(iter, train_loss[-1], train_mape[-1], train_rmse[-1]), flush=True)
+        #         log = 'Iter: {:03d}, Train Loss: {:.4f}, Accuracy: {:.4f}'
+        #         # if len(train_acc) > 0:
+        #         print(log.format(iter, train_loss[-1], train_acc[-1], train_acc_dict[-1]), flush=True)
+        #         # if len(train_acc) > 0:
+        #         #     print(log.format(iter, train_loss[-1], -1), flush=True)
+        #     save_iter = iter
+        # t2 = time.time()
+        # train_time.append(t2 - t1)
+        # # validation
+        # valid_loss = []
+        # # valid_mape = []
+        # # valid_rmse = []
+        # valid_acc = []
+        # valid_acc_dict = []
+        #
+        # save_iter1 = 0
+        # s1 = time.time()
+    #     for iter, (x, y) in enumerate(dataloader['val_loader'].get_iterator()):
+    #         testx = torch.Tensor(x).to(device)
+    #         testx = testx.transpose(1, 3)
+    #         testy = torch.Tensor(y).to(device)
+    #         # testy = testy.transpose(1, 3)
+    #
+    #         metrics = engine.eval(testx, testy)
+    #         valid_loss.append(metrics[0])
+    #         # valid_mape.append(metrics[1])
+    #         # valid_rmse.append(metrics[2])
+    #         # if metrics[1] >= 0:
+    #         valid_acc.append(metrics[1])
+    #         valid_acc_dict.append(metrics[2])
+    #         if len(metrics[2].keys()) > 1:
+    #             print(metrics[2])
+    #         # save_iter1 = iter * args.batch_size + save_iter
+    #     s2 = time.time()
+    #     log = 'Epoch: {:03d}, Inference Time: {:.4f} secs'
+    #     print(log.format(i, (s2 - s1)))
+    #     val_time.append(s2 - s1)
+    #     mtrain_loss = np.mean(train_loss)
+    #     # mtrain_mape = np.mean(train_mape)
+    #     # mtrain_rmse = np.mean(train_rmse)
+    #     mtrain_acc = np.mean(train_acc)
+    #     mtrain_acc_dict = {}
+    #     zero, one, two, three, four = [], [], [], [], []
+    #     for dict in train_acc_dict:
+    #         if dict.get('0', -1) != -1:
+    #             zero.append(dict["0"])
+    #         if dict.get('1', -1) != -1:
+    #             one.append(dict["1"])
+    #         if dict.get('2', -1) != -1:
+    #             two.append(dict["2"])
+    #         if dict.get('3', -1) != -1:
+    #             three.append(dict["3"])
+    #     mtrain_acc_dict["0"] = np.mean(zero)
+    #     mtrain_acc_dict["1"] = np.mean(one)
+    #     mtrain_acc_dict["2"] = np.mean(two)
+    #     mtrain_acc_dict["3"] = np.mean(three)
+    #
+    #     mvalid_loss = np.mean(valid_loss)
+    #     # mvalid_mape = np.mean(valid_mape)
+    #     # mvalid_rmse = np.mean(valid_rmse)
+    #     mvalid_acc = np.mean(valid_acc)
+    #     mvalid_acc_dict = {}
+    #     zero, one, two, three, four = [], [], [], [], []
+    #     for dict in valid_acc_dict:
+    #         if dict.get('0', -1) != -1:
+    #             zero.append(dict["0"])
+    #         if dict.get('1', -1) != -1:
+    #             one.append(dict["1"])
+    #         if dict.get('2', -1) != -1:
+    #             two.append(dict["2"])
+    #         if dict.get('3', -1) != -1:
+    #             three.append(dict["3"])
+    #
+    #     mvalid_acc_dict["0"] = np.mean(zero)
+    #     mvalid_acc_dict["1"] = np.mean(one)
+    #     mvalid_acc_dict["2"] = np.mean(two)
+    #     mvalid_acc_dict["3"] = np.mean(three)
+    #     his_loss.append(mvalid_loss)
+    #
+    #     log = 'Epoch: {:03d}, Train Loss: {:.4f}, Train accuracy: {:.4f}, Valid Loss: {:.4f}, Valid accuracy: {:.4f}, ' \
+    #           'Training Time: {:.4f}/epoch '
+    #     # print(log.format(i, mtrain_loss, mtrain_mape, mtrain_rmse, mvalid_loss, mvalid_mape, mvalid_rmse, (t2 - t1)),
+    #     #       flush=True)
+    #     print(log.format(i, mtrain_loss, mtrain_acc, mvalid_loss, mvalid_acc, (t2 - t1)),
+    #           flush=True)
+    #     torch.save(engine.model.state_dict(),
+    #                args.save + "_epoch_" + str(i) + "_" + str(round(mvalid_loss, 2)) + ".pth")
+    #     print("Train_dict: ")
+    #     print(mtrain_acc_dict)
+    #     print("Valid_dict: ")
+    #     print(mvalid_acc_dict)
+    # print("Average Training Time: {:.4f} secs/epoch".format(np.mean(train_time)))
+    # print("Average Inference Time: {:.4f} secs".format(np.mean(val_time)))
+    #
+    # # testing
+    # bestid = np.argmin(his_loss)
+    # engine.model.load_state_dict(
+    #     torch.load(args.save + "_epoch_" + str(bestid + 1) + "_" + str(round(his_loss[bestid], 2)) + ".pth"))
+    # outputs = []
+    # # realy = torch.Tensor(dataloader['y_test']).to(device)
+    # # realy = realy.transpose(1, 3)[:, 0, :, :]
+    # # batch_real_val = []
+    # for iter, (x, y) in enumerate(dataloader['test_loader'].get_iterator()):
+    #     testx = torch.Tensor(x).to(device)
+    #     testx = testx.transpose(1, 3)
+    #     with torch.no_grad():
+    #         # .transpose(1, 3)
+    #         testx = nn.functional.pad(testx, (1, 0, 0, 0))
+    #         preds = engine.model(testx)
+    #         preds = engine.model.rest_of_operations(preds, scaler)
+    #     outputs.append(preds.squeeze())
+    # realy = torch.Tensor(y).to(device)
+    #
+    # yhat = torch.cat(outputs, dim=0)
+    # yhat = yhat[:realy.size(0), ...]
 
     print("Training finished")
     # print("The valid loss on best model is", str(round(his_loss[bestid], 4)))
-
-    amae = []
-    # amape = []
-    # armse = []
-    acc = []
-    acc_dict = []
-    # for i in range(12):
-    # pred = scaler.inverse_transform(yhat[:, :, i])
-    # real = realy[:, :, i]
-    # metrics = util.metric(yhat[:, :, i], realy)
-    metrics = util.metric(yhat, realy)
-    # log = 'Evaluate best model on test data for horizon {:d}, Test MAE: {:.4f}, Test MAPE: {:.4f}, Test RMSE: {:.4f}'
-    # print(log.format(i + 1, metrics[0], metrics[1], metrics[2]))
-    #     log = 'Evaluate best model on test data for horizon {:d}, Test MAE: {:.4f}, Test Acc: {:.4f}'
-    #     print(log.format(i + 1, metrics[0], metrics[1]))
-    log = 'Evaluate best model on test data for horizon {:d}, Test MAE: {:.4f}, Test Acc: {:.4f}'
-    print(log.format(0, metrics[0], metrics[1]))
-    amae.append(metrics[0])
-    # amape.append(metrics[1])
-    # if metrics[1] >= 0:
-    acc.append(metrics[1])
-    acc_dict.append(metrics[2])
-
-    log = 'On average over 1 horizons, Test MAE: {:.4f}, Test Acc: {:.4f}'
-    print(log.format(np.mean(amae), np.mean(acc)))
-    print(acc_dict)
-    torch.save(engine.model.state_dict(),
-               args.save + "_exp" + str(args.expid) + "_best_" + str(round(his_loss[bestid], 2)) + ".pth")
+    #
+    # amae = []
+    # # amape = []
+    # # armse = []
+    # acc = []
+    # acc_dict = []
+    # # for i in range(12):
+    # # pred = scaler.inverse_transform(yhat[:, :, i])
+    # # real = realy[:, :, i]
+    # # metrics = util.metric(yhat[:, :, i], realy)
+    # metrics = util.metric(yhat, realy)
+    # # log = 'Evaluate best model on test data for horizon {:d}, Test MAE: {:.4f}, Test MAPE: {:.4f}, Test RMSE: {:.4f}'
+    # # print(log.format(i + 1, metrics[0], metrics[1], metrics[2]))
+    # #     log = 'Evaluate best model on test data for horizon {:d}, Test MAE: {:.4f}, Test Acc: {:.4f}'
+    # #     print(log.format(i + 1, metrics[0], metrics[1]))
+    # log = 'Evaluate best model on test data for horizon {:d}, Test MAE: {:.4f}, Test Acc: {:.4f}'
+    # print(log.format(0, metrics[0], metrics[1]))
+    # amae.append(metrics[0])
+    # # amape.append(metrics[1])
+    # # if metrics[1] >= 0:
+    # acc.append(metrics[1])
+    # acc_dict.append(metrics[2])
+    #
+    # log = 'On average over 1 horizons, Test MAE: {:.4f}, Test Acc: {:.4f}'
+    # print(log.format(np.mean(amae), np.mean(acc)))
+    # print(acc_dict)
+    # torch.save(engine.model.state_dict(),
+    #            args.save + "_exp" + str(args.expid) + "_best_" + str(round(his_loss[bestid], 2)) + ".pth")
 
 
 if __name__ == "__main__":

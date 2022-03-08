@@ -212,8 +212,6 @@ class gwnet(nn.Module):
         x = scaler.inverse_transform(x)
         x = torch.flatten(x, 2)
         x = torch.flatten(x, 1)
-        if list(x.shape)[1] != 42900:
-            a = 1 - 1
         x = self.lin(x)
         x = self.softmax(x)
         return x

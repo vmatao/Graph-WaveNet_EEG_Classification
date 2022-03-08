@@ -206,7 +206,7 @@ def prep_df(df):
 def load_all_experiments():
     # TODO deprecated stuff
     app_df = pandas.DataFrame()
-    for i in range(1, 10):
+    for i in range(1, 2):
         if i == 4:
             continue
         print(i)

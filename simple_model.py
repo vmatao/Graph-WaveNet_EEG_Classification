@@ -31,7 +31,7 @@ class OurNeuralNetwork:
   '''
 
     def __init__(self, shape_x):
-        self.nr_of_neurons = shape_x[1]
+        self.nr_of_neurons = shape_x[2]
         weights_shape = self.nr_of_neurons * self.nr_of_neurons + self.nr_of_neurons
         biases_shape = self.nr_of_neurons + 1
         # Weights
@@ -78,7 +78,6 @@ class OurNeuralNetwork:
         for neuron in range(0, self.nr_of_neurons):
             sum_val_weights = 0
             for weight_nr in range(0, self.nr_of_neurons):
-                # TODO get electrode historu
                 electrode_history = x[weight_nr]
                 sum_val_weights += self.weights[neuron * self.nr_of_neurons + weight_nr] * electrode_history
             list_of_h_sum.append(sum_val_weights + self.biases[neuron])
@@ -174,10 +173,6 @@ class OurNeuralNetwork:
                 for neuron in range(0, self.nr_of_neurons):
                     for weight_nr in range(0, self.nr_of_neurons):
                         current_wight = neuron * self.nr_of_neurons + weight_nr
-                        a = learn_rate * d_L_d_ypred * list_d_ypred[neuron] * d_weights[
-                            current_wight]
-                        b = list_d_ypred[neuron]
-                        c = d_weights[current_wight]
                         self.weights[current_wight] -= learn_rate * d_L_d_ypred * list_d_ypred[neuron] * d_weights[
                             current_wight]
                     self.biases[neuron] -= learn_rate * d_L_d_ypred * list_d_ypred[neuron] * d_biases[neuron]
@@ -196,41 +191,41 @@ class OurNeuralNetwork:
 
 
 # Define dataset
-data = np.array([  # 32 2
-    [  # 100 3
-        [  # 22 6
-            [0.123], [0.143], [0.723], [0.923], [0.1023], [0.7723]
-        ],
-        [
-            [0.193], [0.149], [0.923], [0.929], [0.1923], [0.9723]
-        ],
-        [
-            [0.173], [0.743], [0.773], [0.723], [0.7023], [0.7727]
-        ]
-    ],
-    [  # 500 
-        [  # 22
-            [0.523], [0.543], [0.723], [0.923], [0.5023], [0.7723]
-        ],
-        [
-            [0.593], [0.549], [0.923], [0.929], [0.5923], [0.9723]
-        ],
-        [
-            [0.573], [0.743], [0.773], [0.723], [0.7023], [0.7727]
-        ]
-    ]
-])
-
-desired = data.reshape((2,3,6))
-desired = np.average(desired, axis=1)
-all_y_trues = np.array([
-    3,
-    0
-])
-
-# Train our neural network!
-network = OurNeuralNetwork(desired.shape)
-network.train(desired, all_y_trues)
+# data = np.array([  # 32 2
+#     [  # 100 3
+#         [  # 22 6
+#             [0.123], [0.143], [0.723], [0.923], [0.1023], [0.7723]
+#         ],
+#         [
+#             [0.193], [0.149], [0.923], [0.929], [0.1923], [0.9723]
+#         ],
+#         [
+#             [0.173], [0.743], [0.773], [0.723], [0.7023], [0.7727]
+#         ]
+#     ],
+#     [  # 500
+#         [  # 22
+#             [0.523], [0.543], [0.723], [0.923], [0.5023], [0.7723]
+#         ],
+#         [
+#             [0.593], [0.549], [0.923], [0.929], [0.5923], [0.9723]
+#         ],
+#         [
+#             [0.573], [0.743], [0.773], [0.723], [0.7023], [0.7727]
+#         ]
+#     ]
+# ])
+#
+# desired = data.reshape((2,3,6))
+# desired = np.average(desired, axis=1)
+# all_y_trues = np.array([
+#     3,
+#     0
+# ])
+#
+# # Train our neural network!
+# network = OurNeuralNetwork(desired.shape)
+# network.train(desired, all_y_trues)
 # emily = np.array([-7, -3])  # 128 pounds, 63 inches
 # frank = np.array([20, 2])  # 155 pounds, 68 inches
 # print("Emily: %.3f" % network.feedforward(emily))  # 0.951 - F
