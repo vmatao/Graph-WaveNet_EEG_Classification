@@ -108,7 +108,7 @@ def get_events_indexes_cut_windows(df):
     event_df_y.drop(event_df_y.columns[0], axis=1, inplace=True)
     event_df_y.to_csv("allExpIE.csv", index=False)
     event_df_y = event_df_y.sort_index()
-    print(event_df_y.groupby(["event"]).size())
+    # print(event_df_y.groupby(["event"]).size())
     d = {7: [1, 0, 0, 0], 8: [0, 1, 0, 0], 9: [0, 0, 1, 0], 10: [0, 0, 0, 1]}
     event_df_y.event = event_df_y.event.map(d)
     return new_df, event_df_y
@@ -206,7 +206,7 @@ def prep_df(df):
 def load_all_experiments():
     # TODO deprecated stuff
     app_df = pandas.DataFrame()
-    for i in range(1, 2):
+    for i in range(1, 10):
         if i == 4:
             continue
         print(i)
@@ -272,13 +272,13 @@ def generate_train_val_test(args):
 
     print("x shape: ", x.shape, ", y shape: ", len(y))
     # Write the data into npz file.
-    # np.random.seed(99)
+    np.random.seed(99)
     num_samples = x.shape[0]
-    # permutation = np.random.permutation(num_samples)
-    # y = np.asarray(y)
-    # x, y = x[permutation], y[permutation]
-    num_test = round(num_samples * 0.25)
-    num_train = round(num_samples * 0.625)
+    permutation = np.random.permutation(num_samples)
+    y = np.asarray(y)
+    x, y = x[permutation], y[permutation]
+    num_test = round(num_samples * 0.2)
+    num_train = round(num_samples * 0.7)
     num_val = num_samples - num_test - num_train
     # x_train, y_train = x, y
     x_train, y_train = x[:num_train], y[:num_train]

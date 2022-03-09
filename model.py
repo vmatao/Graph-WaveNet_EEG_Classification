@@ -56,8 +56,8 @@ class gwnet(nn.Module):
         self.dropout = dropout
         self.blocks = blocks
         self.layers = layers
-        self.gcn_bool = gcn_bool
-        self.addaptadj = addaptadj
+        self.gcn_bool = True
+        self.addaptadj = True
 
         self.filter_convs = nn.ModuleList()
         self.gate_convs = nn.ModuleList()
@@ -78,7 +78,7 @@ class gwnet(nn.Module):
         if supports is not None:
             self.supports_len += len(supports)
 
-        if gcn_bool and addaptadj:
+        if self.gcn_bool and self.addaptadj:
             if aptinit is None:
                 if supports is None:
                     self.supports = []
