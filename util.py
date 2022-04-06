@@ -151,6 +151,7 @@ def load_pickle(pickle_file):
 
 def load_adj(pkl_filename, adjtype):
     sensor_ids, sensor_id_to_ind, adj_mx = load_pickle(pkl_filename)
+    df1231 = pd.DataFrame(adj_mx[0])
     if adjtype == "scalap":
         adj = [calculate_scaled_laplacian(adj_mx)]
     elif adjtype == "normlap":
@@ -175,7 +176,7 @@ def load_dataset(dataset_dir, batch_size, valid_batch_size=None, test_batch_size
         # np_load_old = np.load
         # np.load = lambda *a, **k: np_load_old(*a, allow_pickle=True, **k)
         # cat_data = np.load(os.path.join(dataset_dir, category + 'ww.npz'))
-        cat_data = np.load(os.path.join(dataset_dir, category + '22.npz'))
+        cat_data = np.load(os.path.join(dataset_dir, category + '50.npz'))
         # np.load = np_load_old
         data['x_' + category] = cat_data['x']
         data['y_' + category] = cat_data['y']
@@ -277,7 +278,11 @@ def accuracy(preds, labels):
             # print(total_pred[classname])
             # if accuracy > 0:
             #     print(classname + " "+str(accuracy))
-    return result, dict_acc_ev
+
+    df_class_accuracy = pd.DataFrame.from_dict(dict_acc_ev, orient='index')
+    df_class_accuracy = df_class_accuracy.T
+    return result, df_class_accuracy
+
 
 
 def metric(pred, real):

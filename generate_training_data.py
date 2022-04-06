@@ -2,7 +2,6 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
-from sklearn.model_selection import StratifiedShuffleSplit
 
 import argparse
 import pickle
@@ -13,6 +12,8 @@ import os
 import pandas
 import pandas as pd
 import mne
+
+from sklearn.model_selection import train_test_split
 
 
 def generate_adj_mx(df):
@@ -84,10 +85,13 @@ def generate_adj_mx(df):
 def get_events_indexes_cut_windows(df):
     df = df.reset_index(drop=True)
     idx = df.index[(df['event'] >= 7) & (df['event'] <= 10)].tolist()
-    n = 90
+    seq_len = args.seq_length_x
+    # count_after_event = int(seq_len / 3)
+    count_after_event = int(seq_len / 2) - 1
     print(len(df))
     # concat slices of data around events
-    new_df = df.iloc[np.unique(np.concatenate([np.arange(max(i - n, 0), min(i + (n / 3), len(df))) for i in idx]))]
+    new_df = df.iloc[
+        np.unique(np.concatenate([np.arange(max(i - seq_len, 0), min(i + count_after_event, len(df))) for i in idx]))]
     new_df = new_df.reset_index(drop=True)
     idx = new_df.index[(new_df['event'] >= 7) & (new_df['event'] <= 10)].tolist()
 
@@ -99,7 +103,7 @@ def get_events_indexes_cut_windows(df):
         events.append(a)
     event_df_y = pd.DataFrame(columns=['index', 'event'])
     for i in range(0, len(idx)):
-        temp_df = pd.DataFrame(columns=['event'], index=np.arange(n + int(n / 3)))
+        temp_df = pd.DataFrame(columns=['event'], index=np.arange(seq_len + int(count_after_event)))
         temp_df['event'] = events[i]
         temp_df.reset_index(inplace=True)
         event_df_y = pd.concat([event_df_y, temp_df])
@@ -150,40 +154,22 @@ def generate_graph_seq2seq_io_data(
     y = []
     min_t = abs(min(x_offsets))
     max_t = abs(num_samples - abs(max(y_offsets)))  # Exclusive
-    checkcounter = 1
-    lastevent = []
-    hundred = 0
+    seq_len = args.seq_length_x
+    count_after_event = int(seq_len / 2) - 1
+    skip_after = 0
     for t in range(min_t, max_t):  # t is the index of the last observation.
-        if hundred > 0 and t + hundred < max_t:
-            hundred -= 1
+        if skip_after > 0:
+            skip_after -= 1
             continue
-        a = event_df_y["event"].iloc[t]
-        if checkcounter == 21:
-            checkcounter = 1
-            if a != lastevent:
-                lastevent = a
-            elif a == lastevent:
-                hundred = 99
-                continue
-        b = event_df_y["event"].iloc[t + x_offsets[0]]
+        if t != min_t and (t + 1) % (seq_len + count_after_event) == 0:
+            skip_after = seq_len - 1
         if event_df_y["event"].iloc[t] == event_df_y["event"].iloc[t + x_offsets[0]]:
-            checkcounter += 1
             x.append(data[t + x_offsets, ...])
             y.append(event_df_y["event"].iloc[t])
-
-        # if checkcounter != 1 and checkcounter < 22:
-        #     checkcounter += 1
-        #     continue
-        # if hundred > 0 and t + hundred < max_t:
-        #     hundred -= 1
-        #     continue
-        # if checkcounter == 22 or checkcounter == 1:
-        #     checkcounter = 2
-        #     x.append(data[t + x_offsets, ...])
-        #     y.append(event_df_y["event"].iloc[t])
-        #     hundred = 99
-
+    # y = np.stack(y, axis=0)
     x = np.stack(x, axis=0)
+    asdfsadf = pd.DataFrame(y, columns=["0", "1", "2", "3"])
+    print(asdfsadf.groupby(["0", "1", "2", "3"]).size())
     return x, y
 
 
@@ -281,12 +267,11 @@ def generate_train_val_test(args):
     num_train = round(num_samples * 0.7)
     num_val = num_samples - num_test - num_train
     # x_train, y_train = x, y
-    x_train, y_train = x[:num_train], y[:num_train]
-    x_val, y_val = (
-        x[num_train: num_train + num_val],
-        y[num_train: num_train + num_val],
-    )
-    x_test, y_test = x[-num_test:], y[-num_test:]
+    # x_train, y_train = x[:num_train], y[:num_train]
+    x_train, x_test, y_train, y_test = train_test_split(
+        x, y, test_size=0.2, random_state=1, stratify=y)
+    x_train, x_val, y_train, y_val = train_test_split(x_train, y_train, test_size=0.125, random_state=1)
+    # x_test, y_test = x[-num_test:], y[-num_test:]
     # x_test, y_test = x_t, y_t
     asdfsadf = pd.DataFrame(y_train, columns=["0", "1", "2", "3"])
     print(asdfsadf.groupby(["0", "1", "2", "3"]).size())
@@ -294,7 +279,7 @@ def generate_train_val_test(args):
         _x, _y = locals()["x_" + cat], locals()["y_" + cat]
         print(cat, "x: ", _x.shape, "y:", len(_y))
         np.savez_compressed(
-            os.path.join(args.output_dir, f"{cat}22.npz"),
+            os.path.join(args.output_dir, f"{cat}50.npz"),
             x=_x,
             y=_y,
         )
@@ -314,8 +299,8 @@ if __name__ == "__main__":
     # parser.add_argument("--index_event_output1", type=str, default="A02Tie.csv",
     #                     help="Index event.", )
     # 0.004s
-    parser.add_argument("--seq_length_x", type=int, default=100, help="Sequence Length.", )
-    parser.add_argument("--seq_length_y", type=int, default=100, help="Sequence Length.", )
+    parser.add_argument("--seq_length_x", type=int, default=50, help="Sequence Length.", )
+    parser.add_argument("--seq_length_y", type=int, default=50, help="Sequence Length.", )
     parser.add_argument("--y_start", type=int, default=1, help="Y pred start", )
     parser.add_argument("--dow", action='store_true', )
 

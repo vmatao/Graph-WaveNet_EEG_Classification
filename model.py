@@ -56,8 +56,10 @@ class gwnet(nn.Module):
         self.dropout = dropout
         self.blocks = blocks
         self.layers = layers
-        self.gcn_bool = True
-        self.addaptadj = True
+        # self.gcn_bool = True
+        # self.addaptadj = True
+        self.gcn_bool = gcn_bool
+        self.addaptadj = addaptadj
 
         self.filter_convs = nn.ModuleList()
         self.gate_convs = nn.ModuleList()
@@ -138,9 +140,22 @@ class gwnet(nn.Module):
 
         # TODO replace first of linear with shape
 
-        self.lin = nn.Linear(195800, 4)
+        self.lin = nn.Linear(42900, 1100)
+
+        self.lin2 = nn.Linear(1100, 4)
 
         self.softmax = nn.Softmax(1)
+
+        self.layer_1 = nn.Linear(42900, 512)
+        self.layer_2 = nn.Linear(512, 128)
+        self.layer_3 = nn.Linear(128, 64)
+        self.layer_out = nn.Linear(64, 4)
+
+        self.relu = nn.ReLU()
+        self.dropout = nn.Dropout(p=0.2)
+        self.batchnorm1 = nn.BatchNorm1d(512)
+        self.batchnorm2 = nn.BatchNorm1d(128)
+        self.batchnorm3 = nn.BatchNorm1d(64)
 
     def forward(self, input):
         in_len = input.size(3)
@@ -205,13 +220,29 @@ class gwnet(nn.Module):
         x = F.relu(skip)
         x = F.relu(self.end_conv_1(x))
         x = self.end_conv_2(x)
-
-        return x
-
-    def rest_of_operations(self, x, scaler):
-        x = scaler.inverse_transform(x)
         x = torch.flatten(x, 2)
         x = torch.flatten(x, 1)
-        x = self.lin(x)
+
+        x = self.layer_1(x)
+        x = self.batchnorm1(x)
+        x = self.relu(x)
+
+        x = self.layer_2(x)
+        x = self.batchnorm2(x)
+        x = self.relu(x)
+        x = self.dropout(x)
+
+        x = self.layer_3(x)
+        x = self.batchnorm3(x)
+        x = self.relu(x)
+        x = self.dropout(x)
+
+        x = self.layer_out(x)
         x = self.softmax(x)
+
         return x
+
+    # def rest_of_operations(self, x, scaler):
+    #     x = scaler.inverse_transform(x)
+    #
+    #     return x
