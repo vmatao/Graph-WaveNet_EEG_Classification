@@ -84,48 +84,58 @@ def generate_adj_mx(df):
 
 def get_events_indexes_cut_windows(df):
     df = df.reset_index(drop=True)
-    idx = df.index[(df['event'] >= 7) & (df['event'] <= 10)].tolist()
-    seq_len = args.seq_length_x
-    # count_after_event = int(seq_len / 3)
-    count_after_event = int(seq_len / 2) - 1
-    print(len(df))
-    # concat slices of data around events
-    new_df = df.iloc[
-        np.unique(np.concatenate([np.arange(max(i - seq_len, 0), min(i + count_after_event, len(df))) for i in idx]))]
-    new_df = new_df.reset_index(drop=True)
-    idx = new_df.index[(new_df['event'] >= 7) & (new_df['event'] <= 10)].tolist()
-
-    # get events from index that is known to be movement
-    events = []
-    for index in idx:
-        a = new_df.iloc[[index]]
-        a = a.iat[0, 25]
-        events.append(a)
-    event_df_y = pd.DataFrame(columns=['index', 'event'])
-    for i in range(0, len(idx)):
-        temp_df = pd.DataFrame(columns=['event'], index=np.arange(seq_len + int(count_after_event)))
-        temp_df['event'] = events[i]
-        temp_df.reset_index(inplace=True)
-        event_df_y = pd.concat([event_df_y, temp_df])
-        # if indexa == 1:
-    event_df_y = event_df_y.reset_index(drop=True)
-    event_df_y.drop(event_df_y.columns[0], axis=1, inplace=True)
-    event_df_y.to_csv("allExpIE.csv", index=False)
-    event_df_y = event_df_y.sort_index()
+    # idx = df.index[(df['event'] >= 7) & (df['event'] <= 10)].tolist()
+    # seq_len = args.seq_length_x
+    # count_after_event = int(seq_len / 2) - 1
+    # quarter_for_ev_zero = int( count_after_event / 4)
+    # zero_before = int(quarter_for_ev_zero / 2)
+    # zero_after = quarter_for_ev_zero - zero_before
+    # print(len(df))
+    # # concat slices of data around events
+    # new_df = df.iloc[
+    #     np.unique(np.concatenate(
+    #         [np.arange(max(i - seq_len - zero_before, 0), min(i + count_after_event + zero_after, len(df))) for i in
+    #          idx]))]
+    # new_df = new_df.reset_index(drop=True)
+    # idx = new_df.index[(new_df['event'] >= 7) & (new_df['event'] <= 10)].tolist()
+    #
+    # # get events from index that is known to be movement
+    # events = []
+    # for index in idx:
+    #     a = new_df.iloc[[index]]
+    #     a = a.iat[0, 25]
+    #     events.append(a)
+    # event_df_y = pd.DataFrame(columns=['index', 'event'])
+    # for i in range(0, len(idx)):
+    #     zere_bef_df = pd.DataFrame(columns=['event'], index=np.arange(zero_before))
+    #     zere_after_df = pd.DataFrame(columns=['event'], index=np.arange(zero_after))
+    #     zere_bef_df['event'] = 0
+    #     zere_after_df['event'] = 0
+    #     temp_df = pd.DataFrame(columns=['event'], index=np.arange(seq_len + int(count_after_event)))
+    #     temp_df['event'] = events[i]
+    #     temp_df = pd.concat([zere_bef_df, temp_df])
+    #     temp_df = pd.concat([temp_df, zere_after_df])
+    #     temp_df = temp_df.reset_index(drop=True)
+    #     temp_df.reset_index(inplace=True)
+    #     event_df_y = pd.concat([event_df_y, temp_df])
+    #     # if indexa == 1:
+    # event_df_y = event_df_y.reset_index(drop=True)
+    # event_df_y.drop(event_df_y.columns[0], axis=1, inplace=True)
+    # # event_df_y.to_csv("allExpIE.csv", index=False)
+    # event_df_y = event_df_y.sort_index()
     # print(event_df_y.groupby(["event"]).size())
-    d = {7: [1, 0, 0, 0], 8: [0, 1, 0, 0], 9: [0, 0, 1, 0], 10: [0, 0, 0, 1]}
-    event_df_y.event = event_df_y.event.map(d)
+    # d = {0: [0, 0, 0, 0, 1], 7: [1, 0, 0, 0, 0], 8: [0, 1, 0, 0, 0], 9: [0, 0, 1, 0, 0], 10: [0, 0, 0, 1, 0]}
+    # df.event = df.event.map(d)
     return new_df, event_df_y
 
 
 def generate_graph_seq2seq_io_data(
         # """indexa,"""
-        df, event_df_y, x_offsets, y_offsets, add_time_in_day=False, add_day_in_week=False, scaler=None
+        df, x_offsets, y_offsets, add_time_in_day=False, add_day_in_week=False, scaler=None
 ):
     """
     Generate samples from
     :param df:
-    :param event_df_y:
     :param x_offsets:
     :param y_offsets:
     :param add_time_in_day:
@@ -138,6 +148,13 @@ def generate_graph_seq2seq_io_data(
     # indexa
     # df, events = cut_windows(df,20,5)
     num_samples, num_nodes = df.shape
+    df = df.reset_index(drop=True)
+    idx = df.index[(df['event'] >= 7) & (df['event'] <= 10)].tolist()
+    events = df[['event']].copy()
+    d = {0: [0, 0, 0, 0, 1], 7: [1, 0, 0, 0, 0], 8: [0, 1, 0, 0, 0], 9: [0, 0, 1, 0, 0], 10: [0, 0, 0, 1, 0]}
+    events.event = events.event.map(d)
+    df = df.drop(['event'], axis=1)
+
     data = np.expand_dims(df.values, axis=-1)
     feature_list = [data]
     if add_time_in_day:
@@ -152,24 +169,62 @@ def generate_graph_seq2seq_io_data(
     data = np.concatenate(feature_list, axis=-1)
     x = []
     y = []
-    min_t = abs(min(x_offsets))
-    max_t = abs(num_samples - abs(max(y_offsets)))  # Exclusive
+    # min_t = abs(min(x_offsets))
+    # max_t = abs(num_samples - abs(max(y_offsets)))  # Exclusive
+
     seq_len = args.seq_length_x
-    count_after_event = int(seq_len / 2) - 1
-    skip_after = 0
-    for t in range(min_t, max_t):  # t is the index of the last observation.
-        if skip_after > 0:
-            skip_after -= 1
-            continue
-        if t != min_t and (t + 1) % (seq_len + count_after_event) == 0:
-            skip_after = seq_len - 1
-        if event_df_y["event"].iloc[t] == event_df_y["event"].iloc[t + x_offsets[0]]:
-            x.append(data[t + x_offsets, ...])
-            y.append(event_df_y["event"].iloc[t])
+    count_after_event = int(seq_len)
+    quarter_for_ev_zero = int(count_after_event / 4)
+    zero_before = int(quarter_for_ev_zero / 2)
+    zero_after = quarter_for_ev_zero - zero_before
+
+    counter_even_odd = 1
+    for i in idx:
+        while zero_before > 0:
+            x.append(data[i - zero_before - seq_len:i - zero_before])
+            y.append([0, 0, 0, 0, 1])
+            zero_before -= 1
+        if counter_even_odd % 2 == 1:
+            zero_before = int(quarter_for_ev_zero)
+        else:
+            zero_before = 0
+        while count_after_event > 0:
+            x.append(data[i - seq_len + count_after_event:i + count_after_event])
+            y.append(events["event"].iloc[i])
+            count_after_event -= 1
+        count_after_event = int(seq_len)
+        while zero_after > 0:
+            x.append(data[i + zero_after:i + zero_after + seq_len])
+            y.append([0, 0, 0, 0, 1])
+            zero_after -= 1
+        if counter_even_odd % 2 == 1:
+            zero_after = 0
+        else:
+            zero_after = int(quarter_for_ev_zero)
+        counter_even_odd += 1
+
+
+    # skip_after = 0
+    # for t in range(min_t, max_t):  # t is the index of the last observation.
+    #     if skip_after > 0:
+    #         skip_after -= 1
+    #         continue
+    #     if t != min_t and (t + 1) % (seq_len + count_after_event + zero_before + zero_after) == 0:
+    #         skip_after = seq_len - 1 + zero_after
+    #     if event_df_y["event"].iloc[t] == event_df_y["event"].iloc[t + x_offsets[0]]:
+    #         x.append(data[t + x_offsets, ...])
+    #         y.append(event_df_y["event"].iloc[t])
+    #     elif (event_df_y["event"].iloc[t] == [0, 0, 0, 0, 1]
+    #           and event_df_y["event"].iloc[t + x_offsets[0]] != [0, 0, 0, 0, 1]) \
+    #             or (event_df_y["event"].iloc[t + x_offsets[0]] == [0, 0, 0, 0, 1]
+    #                 and event_df_y["event"].iloc[t] != [0, 0, 0, 0, 1]):
+    #         a = t + x_offsets[0]
+    #         x.append(data[t + x_offsets, ...])
+    #         y.append([0, 0, 0, 0, 1])
     # y = np.stack(y, axis=0)
     x = np.stack(x, axis=0)
-    asdfsadf = pd.DataFrame(y, columns=["0", "1", "2", "3"])
-    print(asdfsadf.groupby(["0", "1", "2", "3"]).size())
+    asdfsadf = pd.DataFrame(y, columns=["0", "1", "2", "3", "4"])
+    print(asdfsadf.groupby(["0", "1", "2", "3", "4"]).size())
     return x, y
 
 
@@ -180,13 +235,13 @@ def prep_df(df):
     event_dict = {'IdleEEG eyes open': 3, 'IdleEEG eyes closed': 4, 'Start of trial': 6,
                   'LH': 7, 'RH': 8, 'FT': 9, 'Ton': 10, 'Rej': 1, 'Eye mov': 2, "STaRT": 5}
 
-    df, event_df_y = get_events_indexes_cut_windows(df)
-    df.drop(df.columns[25], axis=1, inplace=True)
+    # df, event_df_y = get_events_indexes_cut_windows(df)
+    # df.drop(df.columns[25], axis=1, inplace=True)
     df.drop(df.columns[24], axis=1, inplace=True)
     df.drop(df.columns[23], axis=1, inplace=True)
     df.drop(df.columns[22], axis=1, inplace=True)
-
-    return df, event_df_y
+    # , event_df_y
+    return df
 
 
 def load_all_experiments():
@@ -225,7 +280,8 @@ def generate_train_val_test(args):
     # raw = mne.io.read_raw_gdf("Data Bci competition/A01T.gdf")
     # raw_T = mne.io.read_raw_gdf("Data Bci competition/A02T.gdf")
     app_df = load_all_experiments()
-    df, event_df_y = prep_df(app_df)
+    # , event_df_y
+    df = prep_df(app_df)
     generate_adj_mx(df)
 
     # df = pd.read_hdf(args.traffic_df_filename)
@@ -239,7 +295,7 @@ def generate_train_val_test(args):
     # indexa = 1
     x, y = generate_graph_seq2seq_io_data(
         df,
-        event_df_y,
+        # event_df_y,
         x_offsets=x_offsets,
         y_offsets=y_offsets,
         add_time_in_day=False,
@@ -273,13 +329,13 @@ def generate_train_val_test(args):
     x_train, x_val, y_train, y_val = train_test_split(x_train, y_train, test_size=0.125, random_state=1)
     # x_test, y_test = x[-num_test:], y[-num_test:]
     # x_test, y_test = x_t, y_t
-    asdfsadf = pd.DataFrame(y_train, columns=["0", "1", "2", "3"])
-    print(asdfsadf.groupby(["0", "1", "2", "3"]).size())
+    asdfsadf = pd.DataFrame(y_train, columns=["0", "1", "2", "3", "4"])
+    print(asdfsadf.groupby(["0", "1", "2", "3", "4"]).size())
     for cat in ["train", "val", "test"]:
         _x, _y = locals()["x_" + cat], locals()["y_" + cat]
         print(cat, "x: ", _x.shape, "y:", len(_y))
         np.savez_compressed(
-            os.path.join(args.output_dir, f"{cat}50.npz"),
+            os.path.join(args.output_dir, f"{cat}5050with0_after_or_before.npz"),
             x=_x,
             y=_y,
         )

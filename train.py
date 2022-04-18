@@ -1,3 +1,4 @@
+from datetime import datetime
 import os
 import pickle
 
@@ -38,7 +39,7 @@ parser.add_argument('--epochs', type=int, default=20, help='')
 parser.add_argument('--print_every', type=int, default=50, help='')
 parser.add_argument('--seed', type=int, default=1, help='random seed')
 parser.add_argument('--save', type=str, default='./garage/bci', help='save path')
-parser.add_argument('--expid', type=int, default=1, help='experiment id')
+parser.add_argument('--expid', type=int, default=datetime.now().strftime('%Y%m%d%H%M%S'), help='experiment id')
 args = parser.parse_args()
 
 
@@ -74,6 +75,7 @@ def main():
         os.makedirs(args.save + "/exp"+ str(args.expid)+ "/")
     print("start training...", flush=True)
     his_loss = []
+    his_acc = []
     val_time = []
     train_time = []
     save_iter = 0
@@ -87,7 +89,7 @@ def main():
         # train_rmse = []
         train_acc = []
         # train_acc_dict = []
-        tain_accuracy_df = pd.DataFrame(columns=["0", "1", "2", "3"])
+        tain_accuracy_df = pd.DataFrame(columns=["0", "1", "2", "3", "4"])
         t1 = time.time()
         dataloader['train_loader'].shuffle()
         for iter, (x, y) in enumerate(dataloader['train_loader'].get_iterator()):
@@ -129,7 +131,7 @@ def main():
         # valid_rmse = []
         valid_acc = []
         # valid_acc_dict = []
-        valid_accuracy_df = pd.DataFrame(columns=["0", "1", "2", "3"])
+        valid_accuracy_df = pd.DataFrame(columns=["0", "1", "2", "3", "4"])
 
         save_iter1 = 0
         s1 = time.time()
@@ -164,6 +166,7 @@ def main():
         # mvalid_rmse = np.mean(valid_rmse)
         mvalid_acc = np.mean(valid_acc)
         his_loss.append(mvalid_loss)
+        his_acc.append(mvalid_acc)
 
         log = 'Epoch: {:03d}, Train Loss: {:.4f}, Train avg accuracy: {:.2f}%, Valid Loss: {:.4f}, Valid accuracy: {:.2f}%, ' \
               'Training Time: {:.4f}/epoch '
@@ -172,22 +175,22 @@ def main():
         print(log.format(i, mtrain_loss, mtrain_acc, mvalid_loss, mvalid_acc, (t2 - t1)),
               flush=True)
         torch.save(engine.model.state_dict(),
-                   args.save + "/exp"+ str(args.expid)+ "/"+ "_epoch_" + str(i) + "_" + str(round(mvalid_loss, 2)) + ".pth")
+                   args.save + "/exp"+ str(args.expid)+ "/"+ "_epoch_" + str(i) + "_" + str(round(mvalid_acc, 2)) + ".pth")
         print("Train_dict: ")
-        print('0: {:.2f}%, 1: {:.2f}%, 2: {:.2f}%,3: {:.2f}%'.
+        print('0: {:.2f}%, 1: {:.2f}%, 2: {:.2f}% ,3: {:.2f}%, 4: {:.2f}%'.
               format(tain_accuracy_df['0'].mean(), tain_accuracy_df['1'].mean(),
-                     tain_accuracy_df['2'].mean(), tain_accuracy_df['3'].mean()))
+                     tain_accuracy_df['2'].mean(), tain_accuracy_df['3'].mean(), tain_accuracy_df['4'].mean()))
         print("Valid_dict: ")
-        print('0: {:.2f}%, 1: {:.2f}%, 2: {:.2f}%,3: {:.2f}%'.
+        print('0: {:.2f}%, 1: {:.2f}%, 2: {:.2f}%, 3: {:.2f}%, 4: {:.2f}% '.
               format(valid_accuracy_df['0'].mean(), valid_accuracy_df['1'].mean(),
-                     valid_accuracy_df['2'].mean(), valid_accuracy_df['3'].mean()))
+                     valid_accuracy_df['2'].mean(), valid_accuracy_df['3'].mean(), valid_accuracy_df['4'].mean()))
     print("Average Training Time: {:.4f} secs/epoch".format(np.mean(train_time)))
     print("Average Inference Time: {:.4f} secs".format(np.mean(val_time)))
 
     # testing
-    bestid = np.argmin(his_loss)
+    bestid = np.argmax(his_acc)
     engine.model.load_state_dict(
-        torch.load(args.save + "/exp"+ str(args.expid)+ "/"+ "_epoch_" + str(bestid + 1) + "_" + str(round(his_loss[bestid], 2)) + ".pth"))
+        torch.load(args.save + "/exp"+ str(args.expid)+ "/"+ "_epoch_" + str(bestid + 1) + "_" + str(round(his_acc[bestid], 2)) + ".pth"))
     outputs = []
     realy = torch.Tensor(dataloader['y_test']).to(device)
     # realy = realy.transpose(1, 3)[:, 0, :, :]
@@ -214,7 +217,7 @@ def main():
     # armse = []
     acc = []
     # acc_dict = []
-    test_accuracy_df = pd.DataFrame(columns=["0", "1", "2", "3"])
+    test_accuracy_df = pd.DataFrame(columns=["0", "1", "2", "3", "4"])
     # for i in range(12):
     # pred = scaler.inverse_transform(yhat[:, :, i])
     # real = realy[:, :, i]
@@ -234,11 +237,11 @@ def main():
 
     log = 'On average over 1 horizons, Test MAE: {:.4f}, Test Acc: {:.4f}'
     print(log.format(np.mean(amae), np.mean(acc)))
-    print('0: {:.2f}%, 1: {:.2f}%, 2: {:.2f}%,3: {:.2f}%'.
+    print('0: {:.2f}%, 1: {:.2f}%, 2: {:.2f}%, 3: {:.2f}%, 4: {:.2f}%'.
           format(test_accuracy_df['0'].mean(), test_accuracy_df['1'].mean(),
-                 test_accuracy_df['2'].mean(), test_accuracy_df['3'].mean()))
+                 test_accuracy_df['2'].mean(), test_accuracy_df['3'].mean(), test_accuracy_df['4'].mean()))
     torch.save(engine.model.state_dict(),
-               args.save + "/exp"+ str(args.expid)+ "/"+ "_exp" + str(args.expid) + "_best_" + str(round(his_loss[bestid], 2)) + ".pth")
+               args.save + "/exp"+ str(args.expid)+ "/"+ "_exp" + str(args.expid) + "_best_" + str(round(his_acc[bestid], 2)) + ".pth")
 
 
 if __name__ == "__main__":

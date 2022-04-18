@@ -140,16 +140,16 @@ class gwnet(nn.Module):
 
         # TODO replace first of linear with shape
 
-        self.lin = nn.Linear(42900, 1100)
-
-        self.lin2 = nn.Linear(1100, 4)
+        # self.lin = nn.Linear(42900, 1100)
+        #
+        # self.lin2 = nn.Linear(1100, 4)
 
         self.softmax = nn.Softmax(1)
 
         self.layer_1 = nn.Linear(42900, 512)
         self.layer_2 = nn.Linear(512, 128)
         self.layer_3 = nn.Linear(128, 64)
-        self.layer_out = nn.Linear(64, 4)
+        self.layer_out = nn.Linear(64, 5)
 
         self.relu = nn.ReLU()
         self.dropout = nn.Dropout(p=0.2)

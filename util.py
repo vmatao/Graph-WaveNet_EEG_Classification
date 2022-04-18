@@ -176,7 +176,7 @@ def load_dataset(dataset_dir, batch_size, valid_batch_size=None, test_batch_size
         # np_load_old = np.load
         # np.load = lambda *a, **k: np_load_old(*a, allow_pickle=True, **k)
         # cat_data = np.load(os.path.join(dataset_dir, category + 'ww.npz'))
-        cat_data = np.load(os.path.join(dataset_dir, category + '50.npz'))
+        cat_data = np.load(os.path.join(dataset_dir, category + '5050with0_after_or_before.npz'))
         # np.load = np_load_old
         data['x_' + category] = cat_data['x']
         data['y_' + category] = cat_data['y']
@@ -240,7 +240,7 @@ def masked_mape(preds, labels, null_val=np.nan):
 def accuracy(preds, labels):
     dict_acc_ev = {}
     # , '4'
-    classes = ('0', '1', '2', '3')
+    classes = ('0', '1', '2', '3', '4')
 
     correct = 0
     total = 0
@@ -282,7 +282,6 @@ def accuracy(preds, labels):
     df_class_accuracy = pd.DataFrame.from_dict(dict_acc_ev, orient='index')
     df_class_accuracy = df_class_accuracy.T
     return result, df_class_accuracy
-
 
 
 def metric(pred, real):
