@@ -5,6 +5,7 @@ from __future__ import unicode_literals
 
 import argparse
 import pickle
+import random
 
 import numpy as np
 import os
@@ -82,53 +83,6 @@ def generate_adj_mx(df):
         raise
 
 
-def get_events_indexes_cut_windows(df):
-    df = df.reset_index(drop=True)
-    # idx = df.index[(df['event'] >= 7) & (df['event'] <= 10)].tolist()
-    # seq_len = args.seq_length_x
-    # count_after_event = int(seq_len / 2) - 1
-    # quarter_for_ev_zero = int( count_after_event / 4)
-    # zero_before = int(quarter_for_ev_zero / 2)
-    # zero_after = quarter_for_ev_zero - zero_before
-    # print(len(df))
-    # # concat slices of data around events
-    # new_df = df.iloc[
-    #     np.unique(np.concatenate(
-    #         [np.arange(max(i - seq_len - zero_before, 0), min(i + count_after_event + zero_after, len(df))) for i in
-    #          idx]))]
-    # new_df = new_df.reset_index(drop=True)
-    # idx = new_df.index[(new_df['event'] >= 7) & (new_df['event'] <= 10)].tolist()
-    #
-    # # get events from index that is known to be movement
-    # events = []
-    # for index in idx:
-    #     a = new_df.iloc[[index]]
-    #     a = a.iat[0, 25]
-    #     events.append(a)
-    # event_df_y = pd.DataFrame(columns=['index', 'event'])
-    # for i in range(0, len(idx)):
-    #     zere_bef_df = pd.DataFrame(columns=['event'], index=np.arange(zero_before))
-    #     zere_after_df = pd.DataFrame(columns=['event'], index=np.arange(zero_after))
-    #     zere_bef_df['event'] = 0
-    #     zere_after_df['event'] = 0
-    #     temp_df = pd.DataFrame(columns=['event'], index=np.arange(seq_len + int(count_after_event)))
-    #     temp_df['event'] = events[i]
-    #     temp_df = pd.concat([zere_bef_df, temp_df])
-    #     temp_df = pd.concat([temp_df, zere_after_df])
-    #     temp_df = temp_df.reset_index(drop=True)
-    #     temp_df.reset_index(inplace=True)
-    #     event_df_y = pd.concat([event_df_y, temp_df])
-    #     # if indexa == 1:
-    # event_df_y = event_df_y.reset_index(drop=True)
-    # event_df_y.drop(event_df_y.columns[0], axis=1, inplace=True)
-    # # event_df_y.to_csv("allExpIE.csv", index=False)
-    # event_df_y = event_df_y.sort_index()
-    # print(event_df_y.groupby(["event"]).size())
-    # d = {0: [0, 0, 0, 0, 1], 7: [1, 0, 0, 0, 0], 8: [0, 1, 0, 0, 0], 9: [0, 0, 1, 0, 0], 10: [0, 0, 0, 1, 0]}
-    # df.event = df.event.map(d)
-    return new_df, event_df_y
-
-
 def generate_graph_seq2seq_io_data(
         # """indexa,"""
         df, x_offsets, y_offsets, add_time_in_day=False, add_day_in_week=False, scaler=None
@@ -145,8 +99,6 @@ def generate_graph_seq2seq_io_data(
     # x: (epoch_size, input_length, num_nodes, input_dim)
     # y: (epoch_size, output_length, num_nodes, output_dim)
     """
-    # indexa
-    # df, events = cut_windows(df,20,5)
     num_samples, num_nodes = df.shape
     df = df.reset_index(drop=True)
     idx = df.index[(df['event'] >= 7) & (df['event'] <= 10)].tolist()
@@ -169,8 +121,6 @@ def generate_graph_seq2seq_io_data(
     data = np.concatenate(feature_list, axis=-1)
     x = []
     y = []
-    # min_t = abs(min(x_offsets))
-    # max_t = abs(num_samples - abs(max(y_offsets)))  # Exclusive
 
     seq_len = args.seq_length_x
     count_after_event = int(seq_len)
@@ -203,25 +153,6 @@ def generate_graph_seq2seq_io_data(
             zero_after = int(quarter_for_ev_zero)
         counter_even_odd += 1
 
-
-    # skip_after = 0
-    # for t in range(min_t, max_t):  # t is the index of the last observation.
-    #     if skip_after > 0:
-    #         skip_after -= 1
-    #         continue
-    #     if t != min_t and (t + 1) % (seq_len + count_after_event + zero_before + zero_after) == 0:
-    #         skip_after = seq_len - 1 + zero_after
-    #     if event_df_y["event"].iloc[t] == event_df_y["event"].iloc[t + x_offsets[0]]:
-    #         x.append(data[t + x_offsets, ...])
-    #         y.append(event_df_y["event"].iloc[t])
-    #     elif (event_df_y["event"].iloc[t] == [0, 0, 0, 0, 1]
-    #           and event_df_y["event"].iloc[t + x_offsets[0]] != [0, 0, 0, 0, 1]) \
-    #             or (event_df_y["event"].iloc[t + x_offsets[0]] == [0, 0, 0, 0, 1]
-    #                 and event_df_y["event"].iloc[t] != [0, 0, 0, 0, 1]):
-    #         a = t + x_offsets[0]
-    #         x.append(data[t + x_offsets, ...])
-    #         y.append([0, 0, 0, 0, 1])
-    # y = np.stack(y, axis=0)
     x = np.stack(x, axis=0)
     asdfsadf = pd.DataFrame(y, columns=["0", "1", "2", "3", "4"])
     print(asdfsadf.groupby(["0", "1", "2", "3", "4"]).size())
@@ -229,18 +160,15 @@ def generate_graph_seq2seq_io_data(
 
 
 def prep_df(df):
-    # df = raw.to_data_frame(time_format=None)
     # event_dict = {'IdleEEG eyes open': 276, 'IdleEEG eyes closed': 277, 'Start of trial': 768,
     #               'LH': 769, 'RH': 770, 'FT': 771, 'Ton':772, 'Unkn':783, 'Rej':1023, 'Eye mov':1072, "STaRT": 32766}
     event_dict = {'IdleEEG eyes open': 3, 'IdleEEG eyes closed': 4, 'Start of trial': 6,
                   'LH': 7, 'RH': 8, 'FT': 9, 'Ton': 10, 'Rej': 1, 'Eye mov': 2, "STaRT": 5}
 
-    # df, event_df_y = get_events_indexes_cut_windows(df)
-    # df.drop(df.columns[25], axis=1, inplace=True)
     df.drop(df.columns[24], axis=1, inplace=True)
     df.drop(df.columns[23], axis=1, inplace=True)
     df.drop(df.columns[22], axis=1, inplace=True)
-    # , event_df_y
+    df = df.reset_index(drop=True)
     return df
 
 
@@ -272,93 +200,217 @@ def load_all_experiments():
             temp_df.at[a, "event"] = b
         temp_df.drop(temp_df.columns[0], axis=1, inplace=True)
         app_df = app_df.append(temp_df)
+    app_df = prep_df(app_df)
     return app_df
 
 
 def generate_train_val_test(args):
     seq_length_x, seq_length_y = args.seq_length_x, args.seq_length_y
-    # raw = mne.io.read_raw_gdf("Data Bci competition/A01T.gdf")
-    # raw_T = mne.io.read_raw_gdf("Data Bci competition/A02T.gdf")
-    app_df = load_all_experiments()
-    # , event_df_y
-    df = prep_df(app_df)
+    df = load_all_experiments()
     generate_adj_mx(df)
 
-    # df = pd.read_hdf(args.traffic_df_filename)
-    # 0 is the latest observed sample.
     x_offsets = np.sort(np.concatenate((np.arange(-(seq_length_x - 1), 1, 1),)))
-    # Predict the next one hour
+
     y_offsets = np.sort(np.arange(args.y_start, (seq_length_y + 1), 1))
-    # x: (num_samples, input_length, num_nodes, input_dim)
-    # y: (num_samples, output_length, num_nodes, output_dim)
-    # df1 = prep_df(raw)
-    # indexa = 1
-    x, y = generate_graph_seq2seq_io_data(
+    x, y = generate_graph_seq2seq_whole_exp_training(
         df,
-        # event_df_y,
         x_offsets=x_offsets,
         y_offsets=y_offsets,
-        add_time_in_day=False,
-        add_day_in_week=args.dow,
-        # indexa=indexa,
+        # add_time_in_day=False,
+        # add_day_in_week=args.dow,
     )
-    # indexa += 1
-    # x_t, y_t = generate_graph_seq2seq_io_data(
-    #     df1,
-    #     x_offsets=x_offsets,
-    #     y_offsets=y_offsets,
-    #     add_time_in_day=False,
-    #     add_day_in_week=args.dow,
-    #     indexa=indexa,
-    # )
 
     print("x shape: ", x.shape, ", y shape: ", len(y))
     # Write the data into npz file.
-    np.random.seed(99)
     num_samples = x.shape[0]
-    permutation = np.random.permutation(num_samples)
     y = np.asarray(y)
-    x, y = x[permutation], y[permutation]
-    num_test = round(num_samples * 0.2)
-    num_train = round(num_samples * 0.7)
-    num_val = num_samples - num_test - num_train
-    # x_train, y_train = x, y
-    # x_train, y_train = x[:num_train], y[:num_train]
+    # TODO maybe y = all exp if it takes little time to test
     x_train, x_test, y_train, y_test = train_test_split(
-        x, y, test_size=0.2, random_state=1, stratify=y)
-    x_train, x_val, y_train, y_val = train_test_split(x_train, y_train, test_size=0.125, random_state=1)
-    # x_test, y_test = x[-num_test:], y[-num_test:]
-    # x_test, y_test = x_t, y_t
+        x, y, test_size=0.3, random_state=1, stratify=y)
+    # x_train, x_test, y_train, y_test = train_test_split(
+    #     x, y, test_size=0.3, shuffle=False)
     asdfsadf = pd.DataFrame(y_train, columns=["0", "1", "2", "3", "4"])
     print(asdfsadf.groupby(["0", "1", "2", "3", "4"]).size())
-    for cat in ["train", "val", "test"]:
+    for cat in ["train", "test"]:
         _x, _y = locals()["x_" + cat], locals()["y_" + cat]
         print(cat, "x: ", _x.shape, "y:", len(_y))
         np.savez_compressed(
-            os.path.join(args.output_dir, f"{cat}5050with0_after_or_before.npz"),
+            os.path.join(args.output_dir, f"{cat}"+args.name_extra+".npz"),
             x=_x,
             y=_y,
         )
 
 
+def generate_graph_seq2seq_whole_exp_training(df, x_offsets, y_offsets):
+    x = []
+    y = []
+    ev_int = 49
+    rest_int = 100
+    events_df = df[['event']].copy()
+    idx = df.index[(events_df['event'] >= 7) & (events_df['event'] <= 10)].tolist()
+    for i in idx:
+        a = events_df['event'].iloc[i]
+        events_df.loc[(events_df.index >= i - ev_int) & (events_df.index <= i + ev_int), 'event'] = a
+        events_df.loc[(events_df.index == i - (2*ev_int) - 1), 'event'] = 66
+        events_df.loc[(events_df.index == i + (2*ev_int) + 1), 'event'] = 66
+    new_df = df.iloc[
+        np.unique(np.concatenate(
+            [np.arange(max(i - rest_int, 0), min(i + rest_int, len(df))) for i in
+             idx]))]
+    new_df = new_df.reset_index(drop=True)
+    new_events_df = events_df.iloc[
+        np.unique(np.concatenate(
+            [np.arange(max(i - rest_int, 0), min(i + rest_int, len(events_df))) for i in
+             idx]))]
+    new_events_df = new_events_df.reset_index(drop=True)
+    d = {0: [0, 0, 0, 0, 1], 7: [1, 0, 0, 0, 0], 8: [0, 1, 0, 0, 0], 9: [0, 0, 1, 0, 0], 10: [0, 0, 0, 1, 0]}
+    new_events_df.event = new_events_df.event.map(d)
+    new_df = new_df.drop(['event'], axis=1)
+    data = np.expand_dims(new_df.values, axis=-1)
+
+    num_samples, num_nodes = new_df.shape
+    min_t = abs(min(x_offsets))
+    max_t = abs(num_samples - abs(max(y_offsets)))  # Exclusive
+
+    zeros = []
+    # balance data by randomnly selecting from the "no movement" slices
+    for t in range(min_t, max_t):  # t is the index of the last observation.
+        slice_events = new_events_df[t + x_offsets[0]:t]
+        if 66 in slice_events.values:
+            continue
+        if new_events_df["event"].iloc[t] == [0, 0, 0, 0, 1] or \
+                new_events_df["event"].iloc[t + x_offsets[0]] == [0, 0, 0, 0, 1]:
+            zeros.append(data[t + x_offsets, ...])
+        else:
+            x.append(data[t + x_offsets, ...])
+            y.append(new_events_df["event"].iloc[t])
+    quarter_data_size = int(len(y) / 4)
+    zeros = random.sample(zeros, quarter_data_size)
+
+    x.extend(zeros)
+    l = [[0, 0, 0, 0, 1]] * quarter_data_size
+    y.extend(l)
+
+    x = np.stack(x, axis=0)
+    y = np.stack(y, axis=0)
+    return x, y
+
+
+def load_all_experiments_list():
+    list_exp = []
+    for i in range(1, 10):
+        if i == 4:
+            continue
+        print(i)
+        raw = mne.io.read_raw_gdf("Data Bci competition/A0" + str(i) + "T.gdf")
+        temp_df = raw.to_data_frame(time_format=None)
+        events = mne.events_from_annotations(raw)
+        # # TODO replace events id with eventcode
+        events = events[0]
+        df_events = pd.DataFrame(np.squeeze(events), columns=['row', 'B', 'event'])
+        df_events.drop('B', axis=1, inplace=True)
+        df_events = df_events.loc[(df_events['event'] >= 7) & (df_events['event'] <= 10)]
+        temp_df["event"] = 0
+        for index, row in df_events.iterrows():
+            a = row[0]
+            b = row[1]
+            temp_df.at[a, "event"] = b
+        temp_df.drop(temp_df.columns[0], axis=1, inplace=True)
+        temp_df = prep_df(temp_df)
+        list_exp.append(temp_df)
+    return list_exp
+
+
+def create_data_for_testing(args):
+    list_experiments = load_all_experiments_list()
+    index_exp = 1
+    for df in list_experiments:
+        seq_length_x, seq_length_y = args.seq_length_x, args.seq_length_y
+        x_offsets = np.sort(np.concatenate((np.arange(-(seq_length_x - 1), 1, 1),)))
+        y_offsets = np.sort(np.arange(args.y_start, (seq_length_y + 1), 1))
+        x, y = generate_graph_seq2seq_whole_exp(
+            df,
+            x_offsets=x_offsets,
+            y_offsets=y_offsets,
+        )
+        index = str(index_exp)
+        np.random.seed(1)
+        num_samples = x.shape[0]
+        permutation = np.random.permutation(num_samples)
+        y = np.asarray(y)
+        x, y = x[permutation], y[permutation]
+        print(index, "x: ", x.shape, "y:", len(y))
+        np.savez_compressed(
+            os.path.join(args.output_dir + "/testing/", index + "whole_exp_testing.npz"),
+            x=x,
+            y=y,
+        )
+        if index_exp != 3:
+            index_exp += 1
+        else:
+            index_exp += 2
+
+
+def generate_graph_seq2seq_whole_exp(df, x_offsets, y_offsets):
+    x = []
+    y = []
+    ev_int = 49
+    rest_int = 100
+    events_df = df[['event']].copy()
+    idx = df.index[(events_df['event'] >= 7) & (events_df['event'] <= 10)].tolist()
+    for i in idx:
+        a = events_df['event'].iloc[i]
+        events_df.loc[(events_df.index >= i - ev_int) & (events_df.index <= i + ev_int), 'event'] = a
+        events_df.loc[(events_df.index == i - (2*ev_int) - 1), 'event'] = 66
+        events_df.loc[(events_df.index == i + (2*ev_int) + 1), 'event'] = 66
+    # TODO reduce to 100 and put 101 as some event for separation
+    new_df = df.iloc[
+        np.unique(np.concatenate(
+            [np.arange(max(i - rest_int, 0), min(i + rest_int, len(df))) for i in
+             idx]))]
+    new_df = new_df.reset_index(drop=True)
+    new_events_df = events_df.iloc[
+        np.unique(np.concatenate(
+            [np.arange(max(i - rest_int, 0), min(i + rest_int, len(events_df))) for i in
+             idx]))]
+    new_events_df = new_events_df.reset_index(drop=True)
+
+    d = {0: [0, 0, 0, 0, 1], 7: [1, 0, 0, 0, 0], 8: [0, 1, 0, 0, 0], 9: [0, 0, 1, 0, 0], 10: [0, 0, 0, 1, 0]}
+    new_events_df.event = new_events_df.event.map(d)
+    new_df = new_df.drop(['event'], axis=1)
+    data = np.expand_dims(new_df.values, axis=-1)
+
+    num_samples, num_nodes = new_df.shape
+    min_t = abs(min(x_offsets))
+    max_t = abs(num_samples - abs(max(y_offsets)))  # Exclusive
+
+    for t in range(min_t, max_t):  # t is the index of the last observation.
+        slice_events = new_events_df[t + x_offsets[0]:t]
+        if 66 in slice_events.values:
+            continue
+        if new_events_df["event"].iloc[t] == [0, 0, 0, 0, 1] or \
+                new_events_df["event"].iloc[t + x_offsets[0]] == [0, 0, 0, 0, 1]:
+            x.append(data[t + x_offsets, ...])
+            y.append([0, 0, 0, 0, 1])
+        else:
+            x.append(data[t + x_offsets, ...])
+            y.append(new_events_df["event"].iloc[t])
+
+    x = np.stack(x, axis=0)
+    y = np.stack(y, axis=0)
+    return x, y
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--output_dir", type=str, default="data/BCI", help="Output directory.")
-    # parser.add_argument("--traffic_df_filename", type=str, default="data/metr-la.h5",
-    #                     help="Raw traffic readings.", )
-    # parser.add_argument("--traffic_df_filename", type=str, default="Data Bci competition/A01T.gdf",
-    #                     help="Raw traffic readings.", )
-    # parser.add_argument("--traffic_df_filename1", type=str, default="Data Bci competition/A02T.gdf",
-    #                     help="Raw traffic readings.", )
-    # parser.add_argument("--index_event_output", type=str, default="A01Tie.csv",
-    #                     help="Index event.", )
-    # parser.add_argument("--index_event_output1", type=str, default="A02Tie.csv",
-    #                     help="Index event.", )
     # 0.004s
     parser.add_argument("--seq_length_x", type=int, default=50, help="Sequence Length.", )
     parser.add_argument("--seq_length_y", type=int, default=50, help="Sequence Length.", )
     parser.add_argument("--y_start", type=int, default=1, help="Y pred start", )
+    parser.add_argument("--name_extra", type=str, default = "50_50_100_0rand_split_suffle")
     parser.add_argument("--dow", action='store_true', )
+    creating_testing = True
 
     args = parser.parse_args()
     # if os.path.exists(args.output_dir):
@@ -366,4 +418,7 @@ if __name__ == "__main__":
     #     if reply[0] != 'y': exit
     # else:
     #     os.makedirs(args.output_dir)
-    generate_train_val_test(args)
+    if not creating_testing:
+        generate_train_val_test(args)
+    else:
+        create_data_for_testing(args)

@@ -172,22 +172,49 @@ def load_adj(pkl_filename, adjtype):
 
 def load_dataset(dataset_dir, batch_size, valid_batch_size=None, test_batch_size=None):
     data = {}
-    for category in ['train', 'val', 'test']:
+    for category in ['train', 'test']:
         # np_load_old = np.load
         # np.load = lambda *a, **k: np_load_old(*a, allow_pickle=True, **k)
         # cat_data = np.load(os.path.join(dataset_dir, category + 'ww.npz'))
-        cat_data = np.load(os.path.join(dataset_dir, category + '5050with0_after_or_before.npz'))
+        cat_data = np.load(os.path.join(dataset_dir, category + '50_50_100_0rand_split_suffle.npz'))
         # np.load = np_load_old
         data['x_' + category] = cat_data['x']
         data['y_' + category] = cat_data['y']
     scaler = StandardScaler(mean=data['x_train'][..., 0].mean(), std=data['x_train'][..., 0].std())
     # Data format
-    for category in ['train', 'val', 'test']:
+    for category in ['train', 'test']:
         data['x_' + category][..., 0] = scaler.transform(data['x_' + category][..., 0])
     data['train_loader'] = DataLoader(data['x_train'], data['y_train'], batch_size)
-    data['val_loader'] = DataLoader(data['x_val'], data['y_val'], valid_batch_size)
+    # data['val_loader'] = DataLoader(data['x_val'], data['y_val'], valid_batch_size)
     data['test_loader'] = DataLoader(data['x_test'], data['y_test'], test_batch_size)
     data['scaler'] = scaler
+    return data
+
+
+def load_whole_exp(dataset_dir, batch_size, category, valid_batch_size=None, test_batch_size=None):
+    data = {}
+    category = str(category)
+    # np_load_old = np.load
+    # np.load = lambda *a, **k: np_load_old(*a, allow_pickle=True, **k)
+    # cat_data = np.load(os.path.join(dataset_dir, category + 'ww.npz'))
+    cat_data = np.load(os.path.join(dataset_dir, category + 'whole_exp_testing.npz'))
+    # np.load = np_load_old
+    data['x_' + category] = cat_data['x']
+    data['y_' + category] = cat_data['y']
+    # scaler = StandardScaler(mean=data['x_1'][..., 0].mean(), std=data['x_1'][..., 0].std())
+    # # Data format
+    # for category in ['1', '2', '3', '5', '6', '7', '8', '9']:
+    #     data['x_' + category][..., 0] = scaler.transform(data['x_' + category][..., 0])
+    data[category+'_loader'] = DataLoader(data['x_'+category], data['y_'+category], batch_size)
+    # data['2_loader'] = DataLoader(data['x_2'], data['y_2'], valid_batch_size)
+    # data['3_loader'] = DataLoader(data['x_3'], data['y_3'], test_batch_size)
+    # data['5_loader'] = DataLoader(data['x_5'], data['y_5'], batch_size)
+    # data['6_loader'] = DataLoader(data['x_6'], data['y_6'], valid_batch_size)
+    # data['7_loader'] = DataLoader(data['x_7'], data['y_7'], test_batch_size)
+    # data['8_loader'] = DataLoader(data['x_8'], data['y_8'], batch_size)
+    # data['9_loader'] = DataLoader(data['x_9'], data['y_9'], valid_batch_size)
+    # data['scaler'] = scaler
+    print(category)
     return data
 
 

@@ -36,7 +36,7 @@ parser.add_argument('--learning_rate', type=float, default=0.001, help='learning
 parser.add_argument('--dropout', type=float, default=0.3, help='dropout rate')
 parser.add_argument('--weight_decay', type=float, default=0.0001, help='weight decay rate')
 parser.add_argument('--epochs', type=int, default=20, help='')
-parser.add_argument('--print_every', type=int, default=50, help='')
+parser.add_argument('--print_every', type=int, default=1500, help='')
 parser.add_argument('--seed', type=int, default=1, help='random seed')
 parser.add_argument('--save', type=str, default='./garage/bci', help='save path')
 parser.add_argument('--expid', type=int, default=datetime.now().strftime('%Y%m%d%H%M%S'), help='experiment id')
@@ -135,7 +135,7 @@ def main():
 
         save_iter1 = 0
         s1 = time.time()
-        for iter, (x, y) in enumerate(dataloader['val_loader'].get_iterator()):
+        for iter, (x, y) in enumerate(dataloader['test_loader'].get_iterator()):
             testx = torch.Tensor(x).to(device)
             testx = testx.transpose(1, 3)
             testy = torch.Tensor(y).to(device)
@@ -168,7 +168,7 @@ def main():
         his_loss.append(mvalid_loss)
         his_acc.append(mvalid_acc)
 
-        log = 'Epoch: {:03d}, Train Loss: {:.4f}, Train avg accuracy: {:.2f}%, Valid Loss: {:.4f}, Valid accuracy: {:.2f}%, ' \
+        log = 'Epoch: {:03d}, Train Loss: {:.4f}, Train avg accuracy: {:.2f}%, Test Loss: {:.4f}, Test accuracy: {:.2f}%, ' \
               'Training Time: {:.4f}/epoch '
         # print(log.format(i, mtrain_loss, mtrain_mape, mtrain_rmse, mvalid_loss, mvalid_mape, mvalid_rmse, (t2 - t1)),
         #       flush=True)
@@ -180,7 +180,7 @@ def main():
         print('0: {:.2f}%, 1: {:.2f}%, 2: {:.2f}% ,3: {:.2f}%, 4: {:.2f}%'.
               format(tain_accuracy_df['0'].mean(), tain_accuracy_df['1'].mean(),
                      tain_accuracy_df['2'].mean(), tain_accuracy_df['3'].mean(), tain_accuracy_df['4'].mean()))
-        print("Valid_dict: ")
+        print("Test_dict: ")
         print('0: {:.2f}%, 1: {:.2f}%, 2: {:.2f}%, 3: {:.2f}%, 4: {:.2f}% '.
               format(valid_accuracy_df['0'].mean(), valid_accuracy_df['1'].mean(),
                      valid_accuracy_df['2'].mean(), valid_accuracy_df['3'].mean(), valid_accuracy_df['4'].mean()))

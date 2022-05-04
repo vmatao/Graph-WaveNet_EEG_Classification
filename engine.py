@@ -19,7 +19,6 @@ class trainer():
         self.model.train()
         self.optimizer.zero_grad()
         input = nn.functional.pad(input, (1, 0, 0, 0))
-        # TODO SVM or fully connected nn
         output = self.model(input)
         # # output = self.model.rest_of_operations(output, self.scaler)
         # output = output.transpose(1, 2)
