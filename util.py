@@ -193,7 +193,7 @@ def load_dataset(dataset_dir, batch_size, valid_batch_size=None, test_batch_size
     return data
 
 
-def load_whole_exp(dataset_dir, batch_size, category, valid_batch_size=None, test_batch_size=None):
+def load_whole_exp(dataset_dir, batch_size, category, scaler_cont, valid_batch_size=None, test_batch_size=None):
     data = {}
     category = str(category)
     # np_load_old = np.load
@@ -203,10 +203,14 @@ def load_whole_exp(dataset_dir, batch_size, category, valid_batch_size=None, tes
     # np.load = np_load_old
     data['x_' + category] = cat_data['x']
     data['y_' + category] = cat_data['y']
-    # scaler = StandardScaler(mean=data['x_1'][..., 0].mean(), std=data['x_1'][..., 0].std())
+    if scaler_cont is None:
+        scaler = StandardScaler(mean=data['x_1'][..., 0].mean(), std=data['x_1'][..., 0].std())
+    else:
+        scaler = scaler_cont
     # # Data format
     # for category in ['1', '2', '3', '5', '6', '7', '8', '9']:
-    #     data['x_' + category][..., 0] = scaler.transform(data['x_' + category][..., 0])
+    # TODO remove scaler for label 0 - got 70% accuracy without the scaling
+    data['x_' + category][..., 0] = scaler.transform(data['x_' + category][..., 0])
     data[category + '_loader'] = DataLoader(data['x_' + category], data['y_' + category], batch_size)
     # data['2_loader'] = DataLoader(data['x_2'], data['y_2'], valid_batch_size)
     # data['3_loader'] = DataLoader(data['x_3'], data['y_3'], test_batch_size)
@@ -217,7 +221,7 @@ def load_whole_exp(dataset_dir, batch_size, category, valid_batch_size=None, tes
     # data['9_loader'] = DataLoader(data['x_9'], data['y_9'], valid_batch_size)
     # data['scaler'] = scaler
     print(category)
-    return data
+    return data, scaler
 
 
 # def masked_mse(preds, labels, null_val=np.nan):

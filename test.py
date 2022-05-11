@@ -58,8 +58,11 @@ def main():
     real = []
     # realy = torch.Tensor(dataloader['y_1']).to(device)
     # realy = realy.transpose(1,3)[:,0,:,:]
+    scaler_cont = None
     for category in ['1', '2', '3', '5', '6', '7', '8', '9']:
-        dataloader = util.load_whole_exp(args.data, args.batch_size, category, args.batch_size, args.batch_size)
+        dataloader, scaler = util.load_whole_exp(args.data, args.batch_size, category, scaler_cont, args.batch_size,
+                                                 args.batch_size)
+        scaler_cont = scaler
         # scaler = dataloader['scaler']
         a = []
         b = []
