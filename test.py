@@ -48,7 +48,7 @@ def main():
                   dilation_channels=nhid, skip_channels=nhid * 8, end_channels=nhid * 16)
     model.to(device)
     model.load_state_dict(
-        torch.load("garage/bci/exp20220429134509_50_50_100_0rand_split_suffle/_exp20220429134509_best_68.72.pth"))
+        torch.load("garage/bci/exp50_50_100_0rand_split_suffle_8020/_exp20220428123034_best_69.9.pth"))
 
     model.eval()
 
@@ -77,10 +77,11 @@ def main():
         a = torch.cat(a, dim=0)
         b = torch.cat(b, dim=0)
         metrics = util.metric(a, b)
-        log = 'Test MAE: {:.4f}, Test acc: {:.4f}'
-        print(log.format(metrics[0], metrics[1], metrics[2].head()))
+        # acc, ev_dict, kap, f, p
+        log = 'Test acc: {:.2f}, Kappa Value: {:.2f}, F-test: {:.2f}, P value: {:.2f}'
+        print(log.format(metrics[0], metrics[2], metrics[3], metrics[4]))
         test_accuracy_df = pd.DataFrame(columns=["0", "1", "2", "3", "4"])
-        test_accuracy_df = test_accuracy_df.append(metrics[2])
+        test_accuracy_df = test_accuracy_df.append(metrics[1])
         print('0: {:.2f}%, 1: {:.2f}%, 2: {:.2f}%, 3: {:.2f}%, 4: {:.2f}%'.
               format(test_accuracy_df['0'].mean(), test_accuracy_df['1'].mean(),
                      test_accuracy_df['2'].mean(), test_accuracy_df['3'].mean(), test_accuracy_df['4'].mean()))
@@ -95,10 +96,10 @@ def main():
     #     pred = scaler.inverse_transform(yhat[:,:,i])
     #     real = realy[:,:,i]
     metrics = util.metric(yhat, realy)
-    log = 'Test MAE: {:.4f}, Test acc: {:.4f}'
-    print(log.format(metrics[0], metrics[1], metrics[2].head()))
+    log = 'Test acc: {:.2f}, Kappa Value: {:.2f}, F-test: {:.2f}, P value: {:.2f}'
+    print(log.format(metrics[0], metrics[2], metrics[3], metrics[4]))
     test_accuracy_df = pd.DataFrame(columns=["0", "1", "2", "3", "4"])
-    test_accuracy_df = test_accuracy_df.append(metrics[2])
+    test_accuracy_df = test_accuracy_df.append(metrics[1])
     print('0: {:.2f}%, 1: {:.2f}%, 2: {:.2f}%, 3: {:.2f}%, 4: {:.2f}%'.
           format(test_accuracy_df['0'].mean(), test_accuracy_df['1'].mean(),
                  test_accuracy_df['2'].mean(), test_accuracy_df['3'].mean(), test_accuracy_df['4'].mean()))

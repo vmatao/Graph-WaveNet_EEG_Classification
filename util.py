@@ -3,9 +3,11 @@ import numpy as np
 import os
 
 import pandas as pd
+import scipy
 import scipy.sparse as sp
 import torch
 from scipy.sparse import linalg
+from sklearn.metrics import cohen_kappa_score
 import tensorflow as tf
 
 
@@ -205,7 +207,7 @@ def load_whole_exp(dataset_dir, batch_size, category, valid_batch_size=None, tes
     # # Data format
     # for category in ['1', '2', '3', '5', '6', '7', '8', '9']:
     #     data['x_' + category][..., 0] = scaler.transform(data['x_' + category][..., 0])
-    data[category+'_loader'] = DataLoader(data['x_'+category], data['y_'+category], batch_size)
+    data[category + '_loader'] = DataLoader(data['x_' + category], data['y_' + category], batch_size)
     # data['2_loader'] = DataLoader(data['x_2'], data['y_2'], valid_batch_size)
     # data['3_loader'] = DataLoader(data['x_3'], data['y_3'], test_batch_size)
     # data['5_loader'] = DataLoader(data['x_5'], data['y_5'], batch_size)
@@ -218,50 +220,50 @@ def load_whole_exp(dataset_dir, batch_size, category, valid_batch_size=None, tes
     return data
 
 
-def masked_mse(preds, labels, null_val=np.nan):
-    if np.isnan(null_val):
-        mask = ~torch.isnan(labels)
-    else:
-        mask = (labels != null_val)
-    mask = mask.float()
-    mask /= torch.mean((mask))
-    mask = torch.where(torch.isnan(mask), torch.zeros_like(mask), mask)
-    loss = (preds - labels) ** 2
-    loss = loss * mask
-    loss = torch.where(torch.isnan(loss), torch.zeros_like(loss), loss)
-    return torch.mean(loss)
-
-
-def masked_rmse(preds, labels, null_val=np.nan):
-    return torch.sqrt(masked_mse(preds=preds, labels=labels, null_val=null_val))
-
-
-def masked_mae(preds, labels, null_val=np.nan):
-    if np.isnan(null_val):
-        mask = ~torch.isnan(labels)
-    else:
-        mask = (labels != null_val)
-    mask = mask.float()
-    mask /= torch.mean((mask))
-    mask = torch.where(torch.isnan(mask), torch.zeros_like(mask), mask)
-    loss = torch.abs(preds - labels)
-    loss = loss * mask
-    loss = torch.where(torch.isnan(loss), torch.zeros_like(loss), loss)
-    return torch.mean(loss)
-
-
-def masked_mape(preds, labels, null_val=np.nan):
-    if np.isnan(null_val):
-        mask = ~torch.isnan(labels)
-    else:
-        mask = (labels != null_val)
-    mask = mask.float()
-    mask /= torch.mean((mask))
-    mask = torch.where(torch.isnan(mask), torch.zeros_like(mask), mask)
-    loss = torch.abs(preds - labels) / labels
-    loss = loss * mask
-    loss = torch.where(torch.isnan(loss), torch.zeros_like(loss), loss)
-    return torch.mean(loss)
+# def masked_mse(preds, labels, null_val=np.nan):
+#     if np.isnan(null_val):
+#         mask = ~torch.isnan(labels)
+#     else:
+#         mask = (labels != null_val)
+#     mask = mask.float()
+#     mask /= torch.mean((mask))
+#     mask = torch.where(torch.isnan(mask), torch.zeros_like(mask), mask)
+#     loss = (preds - labels) ** 2
+#     loss = loss * mask
+#     loss = torch.where(torch.isnan(loss), torch.zeros_like(loss), loss)
+#     return torch.mean(loss)
+#
+#
+# def masked_rmse(preds, labels, null_val=np.nan):
+#     return torch.sqrt(masked_mse(preds=preds, labels=labels, null_val=null_val))
+#
+#
+# def masked_mae(preds, labels, null_val=np.nan):
+#     if np.isnan(null_val):
+#         mask = ~torch.isnan(labels)
+#     else:
+#         mask = (labels != null_val)
+#     mask = mask.float()
+#     mask /= torch.mean((mask))
+#     mask = torch.where(torch.isnan(mask), torch.zeros_like(mask), mask)
+#     loss = torch.abs(preds - labels)
+#     loss = loss * mask
+#     loss = torch.where(torch.isnan(loss), torch.zeros_like(loss), loss)
+#     return torch.mean(loss)
+#
+#
+# def masked_mape(preds, labels, null_val=np.nan):
+#     if np.isnan(null_val):
+#         mask = ~torch.isnan(labels)
+#     else:
+#         mask = (labels != null_val)
+#     mask = mask.float()
+#     mask /= torch.mean((mask))
+#     mask = torch.where(torch.isnan(mask), torch.zeros_like(mask), mask)
+#     loss = torch.abs(preds - labels) / labels
+#     loss = loss * mask
+#     loss = torch.where(torch.isnan(loss), torch.zeros_like(loss), loss)
+#     return torch.mean(loss)
 
 
 def accuracy(preds, labels):
@@ -311,9 +313,26 @@ def accuracy(preds, labels):
     return result, df_class_accuracy
 
 
+# TODO F1-score, Kappa values, confusion matrix, AUC-ROC
+
+def f_test(x, y):
+    f = np.var(x, ddof=1) / np.var(y, ddof=1)  # calculate F test statistic
+    dfn = x.size - 1  # define degrees of freedom numerator
+    dfd = y.size - 1  # define degrees of freedom denominator
+    p = 1 - scipy.stats.f.cdf(f, dfn, dfd)  # find p-value of F test statistic
+    return f, p
+
+
 def metric(pred, real):
-    mae = masked_mae(pred, real, 0.0).item()
+    # mae = masked_mae(pred, real, 0.0).item()
     # mape = masked_mape(pred,real,0.0).item()
     # rmse = masked_rmse(pred,real,0.0).item()
     acc, ev_dict = accuracy(pred, real)
-    return mae, acc, ev_dict
+    pred = pred.cpu().numpy()
+    real = real.cpu().numpy()
+    c_real = np.argmax(real, axis=1)
+    c_pred = np.argmax(pred, axis=1)
+    kap = cohen_kappa_score(c_pred, c_real)
+    f, p = f_test(pred, real)
+
+    return acc, ev_dict, kap, f, p
