@@ -6,6 +6,7 @@ from __future__ import unicode_literals
 import argparse
 import pickle
 import random
+import winsound
 
 import numpy as np
 import os
@@ -245,25 +246,25 @@ def generate_graph_seq2seq_whole_exp_training(df, x_offsets, y_offsets):
     x = []
     y = []
     ev_int = 49
-    rest_int = 100
+    rest_int = 62
     events_df = df[['event']].copy()
     idx = df.index[(events_df['event'] >= 7) & (events_df['event'] <= 10)].tolist()
     for i in idx:
         a = events_df['event'].iloc[i]
         events_df.loc[(events_df.index >= i - ev_int) & (events_df.index <= i + ev_int), 'event'] = a
-        events_df.loc[(events_df.index == i - (2*ev_int) - 1), 'event'] = 66
-        events_df.loc[(events_df.index == i + (2*ev_int) + 1), 'event'] = 66
+        events_df.loc[(events_df.index == i - rest_int - 1), 'event'] = 66
+        events_df.loc[(events_df.index == i + rest_int + 1), 'event'] = 66
     new_df = df.iloc[
         np.unique(np.concatenate(
-            [np.arange(max(i - rest_int, 0), min(i + rest_int, len(df))) for i in
+            [np.arange(max(i - rest_int - 1, 0), min(i + rest_int + 1, len(df))) for i in
              idx]))]
     new_df = new_df.reset_index(drop=True)
     new_events_df = events_df.iloc[
         np.unique(np.concatenate(
-            [np.arange(max(i - rest_int, 0), min(i + rest_int, len(events_df))) for i in
+            [np.arange(max(i - rest_int - 1, 0), min(i + rest_int + 1, len(events_df))) for i in
              idx]))]
     new_events_df = new_events_df.reset_index(drop=True)
-    d = {0: [0, 0, 0, 0, 1], 7: [1, 0, 0, 0, 0], 8: [0, 1, 0, 0, 0], 9: [0, 0, 1, 0, 0], 10: [0, 0, 0, 1, 0]}
+    d = {0: [0, 0, 0, 0, 1], 7: [1, 0, 0, 0, 0], 8: [0, 1, 0, 0, 0], 9: [0, 0, 1, 0, 0], 10: [0, 0, 0, 1, 0], 66: 66}
     new_events_df.event = new_events_df.event.map(d)
     new_df = new_df.drop(['event'], axis=1)
     data = np.expand_dims(new_df.values, axis=-1)
@@ -273,15 +274,28 @@ def generate_graph_seq2seq_whole_exp_training(df, x_offsets, y_offsets):
     max_t = abs(num_samples - abs(max(y_offsets)))  # Exclusive
 
     zeros = []
+    changed = True
+    before = True
+    after = False
     # balance data by randomnly selecting from the "no movement" slices
     for t in range(min_t, max_t):  # t is the index of the last observation.
-        slice_events = new_events_df[t + x_offsets[0]:t]
+        slice_events = new_events_df[t + x_offsets[0]:t+1]
         if 66 in slice_events.values:
+            if not changed:
+                changed = True
+                before = not before
+                after = not after
             continue
-        if new_events_df["event"].iloc[t] == [0, 0, 0, 0, 1] or \
-                new_events_df["event"].iloc[t + x_offsets[0]] == [0, 0, 0, 0, 1]:
-            zeros.append(data[t + x_offsets, ...])
+        if new_events_df["event"].iloc[t + x_offsets[0]] == [0, 0, 0, 0, 1]:
+            changed = False
+            if before:
+                zeros.append(data[t + x_offsets, ...])
+        elif new_events_df["event"].iloc[t] == [0, 0, 0, 0, 1]:
+            changed = False
+            if after:
+                zeros.append(data[t + x_offsets, ...])
         else:
+            changed = False
             x.append(data[t + x_offsets, ...])
             y.append(new_events_df["event"].iloc[t])
     quarter_data_size = int(len(y) / 4)
@@ -355,27 +369,27 @@ def generate_graph_seq2seq_whole_exp(df, x_offsets, y_offsets):
     x = []
     y = []
     ev_int = 49
-    rest_int = 100
+    rest_int = 62
     events_df = df[['event']].copy()
     idx = df.index[(events_df['event'] >= 7) & (events_df['event'] <= 10)].tolist()
     for i in idx:
         a = events_df['event'].iloc[i]
         events_df.loc[(events_df.index >= i - ev_int) & (events_df.index <= i + ev_int), 'event'] = a
-        events_df.loc[(events_df.index == i - (2*ev_int) - 1), 'event'] = 66
-        events_df.loc[(events_df.index == i + (2*ev_int) + 1), 'event'] = 66
+        events_df.loc[(events_df.index == i - rest_int - 1), 'event'] = 66
+        events_df.loc[(events_df.index == i + rest_int + 1), 'event'] = 66
     # TODO reduce to 100 and put 101 as some event for separation
     new_df = df.iloc[
         np.unique(np.concatenate(
-            [np.arange(max(i - rest_int, 0), min(i + rest_int, len(df))) for i in
+            [np.arange(max(i - rest_int - 1, 0), min(i + rest_int + 1, len(df))) for i in
              idx]))]
     new_df = new_df.reset_index(drop=True)
     new_events_df = events_df.iloc[
         np.unique(np.concatenate(
-            [np.arange(max(i - rest_int, 0), min(i + rest_int, len(events_df))) for i in
+            [np.arange(max(i - rest_int - 1, 0), min(i + rest_int + 1, len(events_df))) for i in
              idx]))]
     new_events_df = new_events_df.reset_index(drop=True)
 
-    d = {0: [0, 0, 0, 0, 1], 7: [1, 0, 0, 0, 0], 8: [0, 1, 0, 0, 0], 9: [0, 0, 1, 0, 0], 10: [0, 0, 0, 1, 0]}
+    d = {0: [0, 0, 0, 0, 1], 7: [1, 0, 0, 0, 0], 8: [0, 1, 0, 0, 0], 9: [0, 0, 1, 0, 0], 10: [0, 0, 0, 1, 0], 66: 66}
     new_events_df.event = new_events_df.event.map(d)
     new_df = new_df.drop(['event'], axis=1)
     data = np.expand_dims(new_df.values, axis=-1)
@@ -385,7 +399,7 @@ def generate_graph_seq2seq_whole_exp(df, x_offsets, y_offsets):
     max_t = abs(num_samples - abs(max(y_offsets)))  # Exclusive
 
     for t in range(min_t, max_t):  # t is the index of the last observation.
-        slice_events = new_events_df[t + x_offsets[0]:t]
+        slice_events = new_events_df[t + x_offsets[0]:t+1]
         if 66 in slice_events.values:
             continue
         if new_events_df["event"].iloc[t] == [0, 0, 0, 0, 1] or \
@@ -408,9 +422,9 @@ if __name__ == "__main__":
     parser.add_argument("--seq_length_x", type=int, default=50, help="Sequence Length.", )
     parser.add_argument("--seq_length_y", type=int, default=50, help="Sequence Length.", )
     parser.add_argument("--y_start", type=int, default=1, help="Y pred start", )
-    parser.add_argument("--name_extra", type=str, default = "50_50_100_0rand_split_suffle")
+    parser.add_argument("--name_extra", type=str, default = "50_62_0before_or_after_7030")
     parser.add_argument("--dow", action='store_true', )
-    creating_testing = True
+    creating_testing = False
 
     args = parser.parse_args()
     # if os.path.exists(args.output_dir):
@@ -422,3 +436,7 @@ if __name__ == "__main__":
         generate_train_val_test(args)
     else:
         create_data_for_testing(args)
+
+    duration = 3000  # milliseconds
+    freq = 440  # Hz
+    winsound.Beep(freq, duration)

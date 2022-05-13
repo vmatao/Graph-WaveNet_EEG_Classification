@@ -1,3 +1,5 @@
+import winsound
+
 import util
 import argparse
 from model import *
@@ -48,7 +50,7 @@ def main():
                   dilation_channels=nhid, skip_channels=nhid * 8, end_channels=nhid * 16)
     model.to(device)
     model.load_state_dict(
-        torch.load("garage/bci/exp50_50_100_0rand_split_suffle_8020/_exp20220428123034_best_69.9.pth"))
+        torch.load("garage/bci/exp50_62_before_or_after_7030/_exp20220513152725_best_72.02.pth"))
 
     model.eval()
 
@@ -135,3 +137,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+    duration = 3000  # milliseconds
+    freq = 440  # Hz
+    winsound.Beep(freq, duration)

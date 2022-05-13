@@ -1,3 +1,4 @@
+import winsound
 from datetime import datetime
 import os
 import pickle
@@ -227,14 +228,17 @@ def main():
     # print(log.format(i + 1, metrics[0], metrics[1], metrics[2]))
     #     log = 'Evaluate best model on test data for horizon {:d}, Test MAE: {:.4f}, Test Acc: {:.4f}'
     #     print(log.format(i + 1, metrics[0], metrics[1]))
-    log = 'Evaluate best model on test data for horizon {:d}, Test MAE: {:.4f}, Test Acc: {:.4f}'
-    print(log.format(0, metrics[0], metrics[1]))
+    log = 'Evaluate best model on test data for horizon {:d}, Test acc: {:.2f}, Kappa Value: {:.2f}, F-test: {:.2f}, P value: {:.2f}'
+    print(log.format(0, metrics[0], metrics[2], metrics[3], metrics[4]))
     amae.append(metrics[0])
     # amape.append(metrics[1])
     # if metrics[1] >= 0:
-    acc.append(metrics[1])
-    test_accuracy_df = test_accuracy_df.append(metrics[2])
+    acc.append(metrics[0])
+    test_accuracy_df = test_accuracy_df.append(metrics[1])
 
+    duration = 3000  # milliseconds
+    freq = 440  # Hz
+    winsound.Beep(freq, duration)
     log = 'On average over 1 horizons, Test MAE: {:.4f}, Test Acc: {:.4f}'
     print(log.format(np.mean(amae), np.mean(acc)))
     print('0: {:.2f}%, 1: {:.2f}%, 2: {:.2f}%, 3: {:.2f}%, 4: {:.2f}%'.

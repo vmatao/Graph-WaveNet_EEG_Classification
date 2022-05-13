@@ -178,7 +178,7 @@ def load_dataset(dataset_dir, batch_size, valid_batch_size=None, test_batch_size
         # np_load_old = np.load
         # np.load = lambda *a, **k: np_load_old(*a, allow_pickle=True, **k)
         # cat_data = np.load(os.path.join(dataset_dir, category + 'ww.npz'))
-        cat_data = np.load(os.path.join(dataset_dir, category + '50_50_100_0rand_split_suffle.npz'))
+        cat_data = np.load(os.path.join(dataset_dir, category + '50_62_0before_or_after_7030.npz'))
         # np.load = np_load_old
         data['x_' + category] = cat_data['x']
         data['y_' + category] = cat_data['y']
