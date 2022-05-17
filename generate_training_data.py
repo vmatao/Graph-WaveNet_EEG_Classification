@@ -17,7 +17,6 @@ import mne
 
 from sklearn.model_selection import train_test_split
 
-
 def generate_adj_mx(df):
     df_matrix = pd.DataFrame(columns=["1", "2"])
     # replace 22 with 25 to revert
@@ -236,7 +235,7 @@ def generate_train_val_test(args):
         _x, _y = locals()["x_" + cat], locals()["y_" + cat]
         print(cat, "x: ", _x.shape, "y:", len(_y))
         np.savez_compressed(
-            os.path.join(args.output_dir, f"{cat}"+args.name_extra+".npz"),
+            os.path.join(args.output_dir, f"{cat}" + args.name_extra + ".npz"),
             x=_x,
             y=_y,
         )
@@ -279,7 +278,7 @@ def generate_graph_seq2seq_whole_exp_training(df, x_offsets, y_offsets):
     after = False
     # balance data by randomnly selecting from the "no movement" slices
     for t in range(min_t, max_t):  # t is the index of the last observation.
-        slice_events = new_events_df[t + x_offsets[0]:t+1]
+        slice_events = new_events_df[t + x_offsets[0]:t + 1]
         if 66 in slice_events.values:
             if not changed:
                 changed = True
@@ -348,11 +347,7 @@ def create_data_for_testing(args):
             y_offsets=y_offsets,
         )
         index = str(index_exp)
-        np.random.seed(1)
-        num_samples = x.shape[0]
-        permutation = np.random.permutation(num_samples)
         y = np.asarray(y)
-        x, y = x[permutation], y[permutation]
         print(index, "x: ", x.shape, "y:", len(y))
         np.savez_compressed(
             os.path.join(args.output_dir + "/testing/", index + "whole_exp_testing.npz"),
@@ -377,7 +372,6 @@ def generate_graph_seq2seq_whole_exp(df, x_offsets, y_offsets):
         events_df.loc[(events_df.index >= i - ev_int) & (events_df.index <= i + ev_int), 'event'] = a
         events_df.loc[(events_df.index == i - rest_int - 1), 'event'] = 66
         events_df.loc[(events_df.index == i + rest_int + 1), 'event'] = 66
-    # TODO reduce to 100 and put 101 as some event for separation
     new_df = df.iloc[
         np.unique(np.concatenate(
             [np.arange(max(i - rest_int - 1, 0), min(i + rest_int + 1, len(df))) for i in
@@ -397,9 +391,8 @@ def generate_graph_seq2seq_whole_exp(df, x_offsets, y_offsets):
     num_samples, num_nodes = new_df.shape
     min_t = abs(min(x_offsets))
     max_t = abs(num_samples - abs(max(y_offsets)))  # Exclusive
-
     for t in range(min_t, max_t):  # t is the index of the last observation.
-        slice_events = new_events_df[t + x_offsets[0]:t+1]
+        slice_events = new_events_df[t + x_offsets[0]:t + 1]
         if 66 in slice_events.values:
             continue
         if new_events_df["event"].iloc[t] == [0, 0, 0, 0, 1] or \
