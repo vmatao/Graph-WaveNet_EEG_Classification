@@ -53,7 +53,7 @@ def main():
                   dilation_channels=nhid, skip_channels=nhid * 8, end_channels=nhid * 16)
     model.to(device)
     model.load_state_dict(
-        torch.load("garage/bci/exp24_30_bef_or_aft_scaled_down_2_layers/_exp20220517101511_best_39.41.pth"))
+        torch.load("garage/bci/exp50_62_before_or_after_7030_lr_0.0001_batch_64/_exp20220525174431_best_94.51.pth"))
 
     model.eval()
 
@@ -112,16 +112,18 @@ def main():
         time_per_50.append((t2-t1)/cat_real.size(dim=0))
         print("Time experiment " + category + " per 50 0.004s windows with metrics calc " + str((t3 - t1) / cat_real.size(dim=0)))
         # acc, ev_dict, kap, f, p
-        log = 'Test acc: {:.2f}, Kappa Value: {:.2f}, F-test: {:.2f}, P value: {:.2f}'
-        print(log.format(metrics[0], metrics[2], metrics[3], metrics[4]))
+        log = 'Test acc: {:.2f}, Kappa Value: {:.2f}, F1: {:.2f}, Auc: {:.2f}'
+        print(log.format(metrics[0], metrics[2], metrics[5], metrics[6]))
+        print(metrics[7])
         test_accuracy_df = pd.DataFrame(columns=["0", "1", "2", "3", "4"])
         test_accuracy_df = test_accuracy_df.append(metrics[1])
         print('0: {:.2f}%, 1: {:.2f}%, 2: {:.2f}%, 3: {:.2f}%, 4: {:.2f}%'.
               format(test_accuracy_df['0'].mean(), test_accuracy_df['1'].mean(),
                      test_accuracy_df['2'].mean(), test_accuracy_df['3'].mean(), test_accuracy_df['4'].mean()))
 
-        log = 'Test acc: {:.2f}, Kappa Value: {:.2f}, F-test: {:.2f}, P value: {:.2f}'
-        print(log.format(metrics_4[0], metrics_4[2], metrics_4[3], metrics_4[4]))
+        log = 'Test acc: {:.2f}, Kappa Value: {:.2f}, F1: {:.2f}, Auc: {:.2f}'
+        print(log.format(metrics_4[0], metrics_4[2], metrics_4[5], metrics_4[6]))
+        print(metrics_4[7])
         test_accuracy_df = pd.DataFrame(columns=["0", "1", "2", "3", "4"])
         test_accuracy_df = test_accuracy_df.append(metrics_4[1])
         print('0: {:.2f}%, 1: {:.2f}%, 2: {:.2f}%, 3: {:.2f}%, 4: {:.2f}%'.
@@ -151,16 +153,18 @@ def main():
 
     metrics = util.metric(yhat, realy)
     metrics_4 = util.metric(tot_pred_4, tot_real_4)
-    log = 'Test acc: {:.2f}, Kappa Value: {:.2f}, F-test: {:.2f}, P value: {:.2f}'
-    print(log.format(metrics[0], metrics[2], metrics[3], metrics[4]))
+    log = 'Test acc: {:.2f}, Kappa Value: {:.2f}, F1: {:.2f}, Auc: {:.2f}'
+    print(log.format(metrics[0], metrics[2], metrics[5], metrics[6]))
+    print(metrics[7])
     test_accuracy_df = pd.DataFrame(columns=["0", "1", "2", "3", "4"])
     test_accuracy_df = test_accuracy_df.append(metrics[1])
     print('0: {:.2f}%, 1: {:.2f}%, 2: {:.2f}%, 3: {:.2f}%, 4: {:.2f}%'.
           format(test_accuracy_df['0'].mean(), test_accuracy_df['1'].mean(),
                  test_accuracy_df['2'].mean(), test_accuracy_df['3'].mean(), test_accuracy_df['4'].mean()))
 
-    log = 'Test acc: {:.2f}, Kappa Value: {:.2f}, F-test: {:.2f}, P value: {:.2f}'
-    print(log.format(metrics_4[0], metrics_4[2], metrics_4[3], metrics_4[4]))
+    log = 'Test acc: {:.2f}, Kappa Value: {:.2f}, F1: {:.2f}, Auc: {:.2f}'
+    print(log.format(metrics_4[0], metrics_4[2], metrics_4[5], metrics_4[6]))
+    print(metrics_4[7])
     test_accuracy_df = pd.DataFrame(columns=["0", "1", "2", "3", "4"])
     test_accuracy_df = test_accuracy_df.append(metrics_4[1])
     print('0: {:.2f}%, 1: {:.2f}%, 2: {:.2f}%, 3: {:.2f}%, 4: {:.2f}%'.

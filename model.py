@@ -151,6 +151,8 @@ class gwnet(nn.Module):
         self.layer_3 = nn.Linear(128, 64)
         self.layer_out = nn.Linear(64, 5)
 
+        # self.tanh = nn.Tanh()
+        # self.sigmoid = nn.Sigmoid()
         self.relu = nn.ReLU()
         self.dropout = nn.Dropout(p=0.2)
         self.batchnorm1 = nn.BatchNorm1d(512)

@@ -9,6 +9,9 @@ import torch
 from scipy.sparse import linalg
 from sklearn.metrics import cohen_kappa_score
 import tensorflow as tf
+import scipy.stats as ss
+from sklearn.metrics import f1_score
+from sklearn import metrics
 
 
 class DataLoader(object):
@@ -317,14 +320,7 @@ def accuracy(preds, labels):
     return result, df_class_accuracy
 
 
-# TODO F1-score, Kappa values, confusion matrix, AUC-ROC
-
-def f_test(x, y):
-    f = np.var(x, ddof=1) / np.var(y, ddof=1)  # calculate F test statistic
-    dfn = x.size - 1  # define degrees of freedom numerator
-    dfd = y.size - 1  # define degrees of freedom denominator
-    p = 1 - scipy.stats.f.cdf(f, dfn, dfd)  # find p-value of F test statistic
-    return f, p
+# TODO confusion matrix, AUC-ROC
 
 
 def metric(pred, real):
@@ -334,9 +330,23 @@ def metric(pred, real):
     acc, ev_dict = accuracy(pred, real)
     pred = pred.cpu().numpy()
     real = real.cpu().numpy()
-    c_real = np.argmax(real, axis=1)
-    c_pred = np.argmax(pred, axis=1)
-    kap = cohen_kappa_score(c_pred, c_real)
-    f, p = f_test(pred, real)
+    try:
+        auc = metrics.roc_auc_score(real, pred, multi_class='ovr')
+        c_real = np.argmax(real, axis=1)
+        c_pred = np.argmax(pred, axis=1)
+        kap = cohen_kappa_score(c_pred, c_real)
+        f1 = f1_score(c_pred, c_real, average="weighted")
+        c_matrix = metrics.confusion_matrix(c_real, c_pred)
+    except:
+        pred = np.delete(pred, 4, 1)
+        real = np.delete(real, 4, 1)
+        c_real = np.argmax(real, axis=1)
+        c_pred = np.argmax(pred, axis=1)
+        kap = cohen_kappa_score(c_pred, c_real)
+        f1 = f1_score(c_pred, c_real, average="weighted")
+        c_matrix = metrics.confusion_matrix(c_real, c_pred)
+        auc = metrics.roc_auc_score(real, pred, multi_class='ovr')
 
-    return acc, ev_dict, kap, f, p
+    # print confusion matrix
+
+    return acc, ev_dict, kap, 0, 0, f1, auc, c_matrix
