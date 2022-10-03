@@ -20,18 +20,11 @@ class trainer():
         self.optimizer.zero_grad()
         input = nn.functional.pad(input, (1, 0, 0, 0))
         output = self.model(input)
-        # # output = self.model.rest_of_operations(output, self.scaler)
-        # output = output.transpose(1, 2)
-        # output = [batch_size,12,num_nodes,1]
-        # real = torch.unsqueeze(real_val, dim=1)
-        # dummy = 1
         loss = self.loss(output, real_val)
         loss.backward()
         if self.clip is not None:
             torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.clip)
         self.optimizer.step()
-        # mape = util.masked_mape(output, real_val, 0.0).item()
-        # rmse = util.masked_rmse(output, real_val, 0.0).item()
         accuracy, dict_accuracy_df = util.accuracy(output, real_val)
         return loss.item(), accuracy, dict_accuracy_df
 
@@ -39,13 +32,6 @@ class trainer():
         self.model.eval()
         input = nn.functional.pad(input, (1, 0, 0, 0))
         output = self.model(input)
-        # # output = self.model.rest_of_operations(output, self.scaler)
-        # output = output.transpose(1, 3)
-        # output = [batch_size,12,num_nodes,1]
-        # real = torch.unsqueeze(real_val, dim=1)
-        # predict = self.scaler.inverse_transform(output)
         loss = self.loss(output, real_val)
-        # mape = util.masked_mape(predict, real, 0.0).item()
-        # rmse = util.masked_rmse(predict, real, 0.0).item()
         accuracy, dict_accuracy_df = util.accuracy(output, real_val)
         return loss.item(), accuracy, dict_accuracy_df

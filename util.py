@@ -40,25 +40,6 @@ class DataLoader(object):
         xs, ys = self.xs[permutation], self.ys[permutation]
         self.xs = xs
         self.ys = ys
-        # new_df = pd.DataFrame(columns=["idx", "event"])
-        # for i in range(0, len(permutation)):
-        #     if i in df.idx.values:
-        #         a = permutation[i]
-        #         b = df.loc[df['idx'] == i].iat[0, 1]
-        #         new_df.loc[len(new_df.index)] = [a, b]
-        # df = df.set_index("idx")
-        # df = df.sort_index()
-        #
-        # new_df = new_df.set_index("idx")
-        # new_df = new_df.sort_index()
-        # d = {7: [1, 0, 0, 0], 8: [0, 1, 0, 0], 9: [0, 0, 1, 0], 10: [0, 0, 0, 1]}
-        # df.event = df.event.map(d)
-        # df.to_pickle("rest.pkl")
-        # try:
-        #     new_df.event = new_df.event.map(d)
-        # except:
-        #     print("new_df.event = new_df.event.map(d)")
-        # self.shuffled_df = new_df.copy()
 
     def get_iterator(self):
         self.current_ind = 0
@@ -178,11 +159,7 @@ def load_adj(pkl_filename, adjtype):
 def load_dataset(dataset_dir, batch_size, valid_batch_size=None, test_batch_size=None):
     data = {}
     for category in ['train', 'test']:
-        # np_load_old = np.load
-        # np.load = lambda *a, **k: np_load_old(*a, allow_pickle=True, **k)
-        # cat_data = np.load(os.path.join(dataset_dir, category + 'ww.npz'))
-        cat_data = np.load(os.path.join(dataset_dir, category + '50_62_0before_or_after_7030.npz'))
-        # np.load = np_load_old
+        cat_data = np.load(os.path.join(dataset_dir, category + '50_62_0before_or_after_4060_all.npz'))
         data['x_' + category] = cat_data['x']
         data['y_' + category] = cat_data['y']
     scaler = StandardScaler(mean=data['x_train'][..., 0].mean(), std=data['x_train'][..., 0].std())
@@ -190,7 +167,6 @@ def load_dataset(dataset_dir, batch_size, valid_batch_size=None, test_batch_size
     for category in ['train', 'test']:
         data['x_' + category][..., 0] = scaler.transform(data['x_' + category][..., 0])
     data['train_loader'] = DataLoader(data['x_train'], data['y_train'], batch_size)
-    # data['val_loader'] = DataLoader(data['x_val'], data['y_val'], valid_batch_size)
     data['test_loader'] = DataLoader(data['x_test'], data['y_test'], test_batch_size)
     data['scaler'] = scaler
     return data
@@ -199,78 +175,19 @@ def load_dataset(dataset_dir, batch_size, valid_batch_size=None, test_batch_size
 def load_whole_exp(dataset_dir, batch_size, category, scaler_cont, valid_batch_size=None, test_batch_size=None):
     data = {}
     category = str(category)
-    # np_load_old = np.load
-    # np.load = lambda *a, **k: np_load_old(*a, allow_pickle=True, **k)
-    # cat_data = np.load(os.path.join(dataset_dir, category + 'ww.npz'))
-    cat_data = np.load(os.path.join(dataset_dir, category + 'whole_exp_testing.npz'))
-    # np.load = np_load_old
+    cat_data = np.load(os.path.join(dataset_dir, category + '.npz'))
     data['x_' + category] = cat_data['x']
     data['y_' + category] = cat_data['y']
     if scaler_cont is None:
-        scaler = StandardScaler(mean=data['x_1'][..., 0].mean(), std=data['x_1'][..., 0].std())
+        scaler = StandardScaler(mean=data['x_'+ category][..., 0].mean(), std=data['x_'+ category][..., 0].std())
     else:
         scaler = scaler_cont
     # # Data format
     # for category in ['1', '2', '3', '5', '6', '7', '8', '9']:
-    # TODO remove scaler for label 0 - got 70% accuracy without the scaling
     data['x_' + category][..., 0] = scaler.transform(data['x_' + category][..., 0])
     data[category + '_loader'] = DataLoader(data['x_' + category], data['y_' + category], batch_size)
-    # data['2_loader'] = DataLoader(data['x_2'], data['y_2'], valid_batch_size)
-    # data['3_loader'] = DataLoader(data['x_3'], data['y_3'], test_batch_size)
-    # data['5_loader'] = DataLoader(data['x_5'], data['y_5'], batch_size)
-    # data['6_loader'] = DataLoader(data['x_6'], data['y_6'], valid_batch_size)
-    # data['7_loader'] = DataLoader(data['x_7'], data['y_7'], test_batch_size)
-    # data['8_loader'] = DataLoader(data['x_8'], data['y_8'], batch_size)
-    # data['9_loader'] = DataLoader(data['x_9'], data['y_9'], valid_batch_size)
-    # data['scaler'] = scaler
     print(category)
     return data, scaler
-
-
-# def masked_mse(preds, labels, null_val=np.nan):
-#     if np.isnan(null_val):
-#         mask = ~torch.isnan(labels)
-#     else:
-#         mask = (labels != null_val)
-#     mask = mask.float()
-#     mask /= torch.mean((mask))
-#     mask = torch.where(torch.isnan(mask), torch.zeros_like(mask), mask)
-#     loss = (preds - labels) ** 2
-#     loss = loss * mask
-#     loss = torch.where(torch.isnan(loss), torch.zeros_like(loss), loss)
-#     return torch.mean(loss)
-#
-#
-# def masked_rmse(preds, labels, null_val=np.nan):
-#     return torch.sqrt(masked_mse(preds=preds, labels=labels, null_val=null_val))
-#
-#
-# def masked_mae(preds, labels, null_val=np.nan):
-#     if np.isnan(null_val):
-#         mask = ~torch.isnan(labels)
-#     else:
-#         mask = (labels != null_val)
-#     mask = mask.float()
-#     mask /= torch.mean((mask))
-#     mask = torch.where(torch.isnan(mask), torch.zeros_like(mask), mask)
-#     loss = torch.abs(preds - labels)
-#     loss = loss * mask
-#     loss = torch.where(torch.isnan(loss), torch.zeros_like(loss), loss)
-#     return torch.mean(loss)
-#
-#
-# def masked_mape(preds, labels, null_val=np.nan):
-#     if np.isnan(null_val):
-#         mask = ~torch.isnan(labels)
-#     else:
-#         mask = (labels != null_val)
-#     mask = mask.float()
-#     mask /= torch.mean((mask))
-#     mask = torch.where(torch.isnan(mask), torch.zeros_like(mask), mask)
-#     loss = torch.abs(preds - labels) / labels
-#     loss = loss * mask
-#     loss = torch.where(torch.isnan(loss), torch.zeros_like(loss), loss)
-#     return torch.mean(loss)
 
 
 def accuracy(preds, labels):
@@ -320,13 +237,7 @@ def accuracy(preds, labels):
     return result, df_class_accuracy
 
 
-# TODO confusion matrix, AUC-ROC
-
-
 def metric(pred, real):
-    # mae = masked_mae(pred, real, 0.0).item()
-    # mape = masked_mape(pred,real,0.0).item()
-    # rmse = masked_rmse(pred,real,0.0).item()
     acc, ev_dict = accuracy(pred, real)
     pred = pred.cpu().numpy()
     real = real.cpu().numpy()
@@ -347,6 +258,25 @@ def metric(pred, real):
         c_matrix = metrics.confusion_matrix(c_real, c_pred)
         auc = metrics.roc_auc_score(real, pred, multi_class='ovr')
 
-    # print confusion matrix
-
     return acc, ev_dict, kap, 0, 0, f1, auc, c_matrix
+
+def metric_visual(pred, real):
+    acc, ev_dict = accuracy(pred, real)
+    pred = pred.cpu().numpy()
+    real = real.cpu().numpy()
+    try:
+        c_real = np.argmax(real, axis=1)
+        c_pred = np.argmax(pred, axis=1)
+        kap = cohen_kappa_score(c_pred, c_real)
+        f1 = f1_score(c_pred, c_real, average="weighted")
+        c_matrix = metrics.confusion_matrix(c_real, c_pred)
+    except:
+        pred = np.delete(pred, 4, 1)
+        real = np.delete(real, 4, 1)
+        c_real = np.argmax(real, axis=1)
+        c_pred = np.argmax(pred, axis=1)
+        kap = cohen_kappa_score(c_pred, c_real)
+        f1 = f1_score(c_pred, c_real, average="weighted")
+        c_matrix = metrics.confusion_matrix(c_real, c_pred)
+
+    return acc, ev_dict, kap, 0, 0, f1, 0, c_matrix

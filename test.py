@@ -13,7 +13,7 @@ import seaborn as sns
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--device', type=str, default='cuda:0', help='')
-parser.add_argument('--data', type=str, default='data/BCI/testing', help='data path')
+parser.add_argument('--data', type=str, default='data/BCI', help='data path')
 parser.add_argument('--adjdata', type=str, default='data/sensor_graph/adj_mx_bci22.pkl', help='adj data path')
 parser.add_argument('--adjtype', type=str, default='doubletransition', help='adj type')
 parser.add_argument('--gcn_bool', type=bool, default=True, help='whether to add graph convolution layer')
@@ -53,7 +53,7 @@ def main():
                   dilation_channels=nhid, skip_channels=nhid * 8, end_channels=nhid * 16)
     model.to(device)
     model.load_state_dict(
-        torch.load("garage/bci/exp50_62_before_or_after_7030_lr_0.0001_batch_64/_exp20220525174431_best_94.51.pth"))
+        torch.load("garage/bci/exp50_62_before_or_after_7030_lr_0.0001_batch_128_both/_exp20220607155738_best_92.91.pth"))
 
     model.eval()
 
@@ -61,11 +61,9 @@ def main():
 
     outputs = []
     real = []
-    # realy = torch.Tensor(dataloader['y_1']).to(device)
-    # realy = realy.transpose(1,3)[:,0,:,:]
     scaler_cont = None
     time_per_50 = []
-    for category in ['1', '2', '3', '5', '6', '7', '8', '9']:
+    for category in ['test50_62_0before_or_after_7030_all']:
         dataloader, scaler = util.load_whole_exp(args.data, args.batch_size, category, scaler_cont, args.batch_size,
                                                  args.batch_size)
         scaler_cont = scaler
@@ -170,12 +168,6 @@ def main():
     print('0: {:.2f}%, 1: {:.2f}%, 2: {:.2f}%, 3: {:.2f}%, 4: {:.2f}%'.
           format(test_accuracy_df['0'].mean(), test_accuracy_df['1'].mean(),
                  test_accuracy_df['2'].mean(), test_accuracy_df['3'].mean(), test_accuracy_df['4'].mean()))
-    #     amae.append(metrics[0])
-    #     amape.append(metrics[1])
-    #     armse.append(metrics[2])
-    #
-    # log = 'On average over 12 horizons, Test MAE: {:.4f}, Test MAPE: {:.4f}, Test RMSE: {:.4f}'
-    # print(log.format(np.mean(amae),np.mean(amape),np.mean(armse)))
 
     if args.plotheatmap == "True":
         adp = F.softmax(F.relu(torch.mm(model.nodevec1, model.nodevec2)), dim=1)
@@ -186,15 +178,6 @@ def main():
         df = pd.DataFrame(adp)
         sns.heatmap(df, cmap="RdYlBu")
         plt.savefig("./emb" + '.pdf')
-
-    # y12 = realy[:,99,11].cpu().detach().numpy()
-    # yhat12 = scaler.inverse_transform(yhat[:,99,11]).cpu().detach().numpy()
-    #
-    # y3 = realy[:,99,2].cpu().detach().numpy()
-    # yhat3 = scaler.inverse_transform(yhat[:,99,2]).cpu().detach().numpy()
-    #
-    # df2 = pd.DataFrame({'real12':y12,'pred12':yhat12, 'real3': y3, 'pred3':yhat3})
-    # df2.to_csv('./wave.csv',index=False)
 
 
 if __name__ == "__main__":

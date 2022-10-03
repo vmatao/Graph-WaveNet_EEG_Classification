@@ -138,12 +138,6 @@ class gwnet(nn.Module):
 
         self.receptive_field = receptive_field
 
-        # TODO replace first of linear with shape
-
-        # self.lin = nn.Linear(42900, 1100)
-        #
-        # self.lin2 = nn.Linear(1100, 4)
-
         self.softmax = nn.Softmax(1)
 
         self.layer_1 = nn.Linear(42900, 512)
@@ -154,7 +148,7 @@ class gwnet(nn.Module):
         # self.tanh = nn.Tanh()
         # self.sigmoid = nn.Sigmoid()
         self.relu = nn.ReLU()
-        self.dropout = nn.Dropout(p=0.2)
+        self.dropout = nn.Dropout(p=0.3)
         self.batchnorm1 = nn.BatchNorm1d(512)
         self.batchnorm2 = nn.BatchNorm1d(128)
         self.batchnorm3 = nn.BatchNorm1d(64)
@@ -188,9 +182,7 @@ class gwnet(nn.Module):
 
             # (dilation, init_dilation) = self.dilations[i]
 
-            # residual = dilation_func(x, dilation, init_dilation, i)
             residual = x
-            # dilated convolution
             filter = self.filter_convs[i](residual)
             filter = torch.tanh(filter)
             gate = self.gate_convs[i](residual)
@@ -243,8 +235,3 @@ class gwnet(nn.Module):
         x = self.softmax(x)
 
         return x
-
-    # def rest_of_operations(self, x, scaler):
-    #     x = scaler.inverse_transform(x)
-    #
-    #     return x

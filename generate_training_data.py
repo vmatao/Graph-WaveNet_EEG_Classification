@@ -14,12 +14,12 @@ import os
 import pandas
 import pandas as pd
 import mne
+import scipy.io as sio
 
 from sklearn.model_selection import train_test_split
 
 def generate_adj_mx(df):
     df_matrix = pd.DataFrame(columns=["1", "2"])
-    # replace 22 with 25 to revert
     for i in range(0, 22):
         for j in range(0, 22):
             df_matrix.loc[len(df_matrix.index)] = [i, j]
@@ -44,8 +44,6 @@ def generate_adj_mx(df):
             df_matrix.at[index, "3"] = 1
         else:
             df_matrix.at[index, "3"] = (distance - sum) / distance
-        # elif row[0] == 25 and row[1] == 25:
-        #     df_matrix.at[index, "3"] = 1
     df_matrix = df_matrix.pivot(index='1', columns='2')
     a = df_matrix.to_numpy()
 
@@ -160,8 +158,6 @@ def generate_graph_seq2seq_io_data(
 
 
 def prep_df(df):
-    # event_dict = {'IdleEEG eyes open': 276, 'IdleEEG eyes closed': 277, 'Start of trial': 768,
-    #               'LH': 769, 'RH': 770, 'FT': 771, 'Ton':772, 'Unkn':783, 'Rej':1023, 'Eye mov':1072, "STaRT": 32766}
     event_dict = {'IdleEEG eyes open': 3, 'IdleEEG eyes closed': 4, 'Start of trial': 6,
                   'LH': 7, 'RH': 8, 'FT': 9, 'Ton': 10, 'Rej': 1, 'Eye mov': 2, "STaRT": 5}
 
@@ -174,46 +170,50 @@ def prep_df(df):
 
 def load_all_experiments():
     # TODO deprecated stuff
-    app_df = pandas.DataFrame()
+    uncut_df = pandas.DataFrame()
+
     for i in range(1, 10):
         if i == 4:
             continue
-        print(i)
-        raw = mne.io.read_raw_gdf("Data Bci competition/A0" + str(i) + "T.gdf")
-        temp_df = raw.to_data_frame(time_format=None)
-        events = mne.events_from_annotations(raw)
-        # TODO replace events id with eventcode
-        events = events[0]
-        df_events = pd.DataFrame(np.squeeze(events), columns=['row', 'B', 'event'])
-        df_events.drop('B', axis=1, inplace=True)
-        df_events = df_events.loc[(df_events['event'] >= 7) & (df_events['event'] <= 10)]
+        for letter in ("T", "E"):
+            print(i)
+            raw = mne.io.read_raw_gdf("Data Bci competition/A0" + str(i) + letter + ".gdf")
+            temp_df = raw.to_data_frame(time_format=None)
+            events = mne.events_from_annotations(raw)
+            events = events[0]
+            df_events = pd.DataFrame(np.squeeze(events), columns=['row', 'B', 'event'])
+            df_events.drop('B', axis=1, inplace=True)
+            df_events = df_events.loc[(df_events['event'] >= 7) & (df_events['event'] <= 10)]
 
-        # raw.plot_psd(fmax=50) #eeg db
-        # raw.plot(duration=5, n_channels=25) #channels freq
-        # fig = mne.viz.plot_events(events, event_id=event_dict, sfreq=raw.info['sfreq'],
-        #                     first_samp=raw.first_samp) # events over time
+            if letter == "E":
+                annots  = sio.loadmat('Data Labeled BCIC/A0'+str(i)+'E.mat')
+                con_list = annots['classlabel']
+                df_events['real_labels'] = con_list
+                df_events.drop('event', axis=1, inplace=True)
+                df_events.columns = ['row', 'event']
+                df_events["event"] = df_events["event"]+6
 
-        temp_df["event"] = 0
-        for index, row in df_events.iterrows():
-            a = row[0]
-            b = row[1]
-            temp_df.at[a, "event"] = b
-        temp_df.drop(temp_df.columns[0], axis=1, inplace=True)
-        app_df = app_df.append(temp_df)
-    app_df = prep_df(app_df)
-    return app_df
+            temp_df["event"] = 0
+            for index, row in df_events.iterrows():
+                a = row[0]
+                b = row[1]
+                temp_df.at[a, "event"] = b
+            temp_df.drop(temp_df.columns[0], axis=1, inplace=True)
+            uncut_df = uncut_df.append(temp_df)
+    uncut_df = prep_df(uncut_df)
+    return uncut_df
 
 
 def generate_train_val_test(args):
     seq_length_x, seq_length_y = args.seq_length_x, args.seq_length_y
-    df = load_all_experiments()
-    generate_adj_mx(df)
+    uncut_df = load_all_experiments()
+    generate_adj_mx(uncut_df)
 
     x_offsets = np.sort(np.concatenate((np.arange(-(seq_length_x - 1), 1, 1),)))
 
     y_offsets = np.sort(np.arange(args.y_start, (seq_length_y + 1), 1))
     x, y = generate_graph_seq2seq_whole_exp_training(
-        df,
+        uncut_df,
         x_offsets=x_offsets,
         y_offsets=y_offsets,
         # add_time_in_day=False,
@@ -226,7 +226,7 @@ def generate_train_val_test(args):
     y = np.asarray(y)
     # TODO maybe y = all exp if it takes little time to test
     x_train, x_test, y_train, y_test = train_test_split(
-        x, y, test_size=0.3, random_state=1, stratify=y)
+        x, y, test_size=0.6, random_state=1, stratify=y)
     # x_train, x_test, y_train, y_test = train_test_split(
     #     x, y, test_size=0.3, shuffle=False)
     asdfsadf = pd.DataFrame(y_train, columns=["0", "1", "2", "3", "4"])
@@ -314,23 +314,33 @@ def load_all_experiments_list():
     for i in range(1, 10):
         if i == 4:
             continue
-        print(i)
-        raw = mne.io.read_raw_gdf("Data Bci competition/A0" + str(i) + "T.gdf")
-        temp_df = raw.to_data_frame(time_format=None)
-        events = mne.events_from_annotations(raw)
-        # # TODO replace events id with eventcode
-        events = events[0]
-        df_events = pd.DataFrame(np.squeeze(events), columns=['row', 'B', 'event'])
-        df_events.drop('B', axis=1, inplace=True)
-        df_events = df_events.loc[(df_events['event'] >= 7) & (df_events['event'] <= 10)]
-        temp_df["event"] = 0
-        for index, row in df_events.iterrows():
-            a = row[0]
-            b = row[1]
-            temp_df.at[a, "event"] = b
-        temp_df.drop(temp_df.columns[0], axis=1, inplace=True)
-        temp_df = prep_df(temp_df)
-        list_exp.append(temp_df)
+        temp_i_df = pandas.DataFrame()
+        for letter in ("T", "E"):
+            print(i)
+            raw = mne.io.read_raw_gdf("Data Bci competition/A0" + str(i) + letter + ".gdf")
+            temp_df = raw.to_data_frame(time_format=None)
+            events = mne.events_from_annotations(raw)
+            events = events[0]
+            df_events = pd.DataFrame(np.squeeze(events), columns=['row', 'B', 'event'])
+            df_events.drop('B', axis=1, inplace=True)
+            df_events = df_events.loc[(df_events['event'] >= 7) & (df_events['event'] <= 10)]
+            if letter == "E":
+                annots  = sio.loadmat('Data Labeled BCIC/A0'+str(i)+'E.mat')
+                con_list = annots['classlabel']
+                df_events['real_labels'] = con_list
+                df_events.drop('event', axis=1, inplace=True)
+                df_events.columns = ['row', 'event']
+                df_events["event"] = df_events["event"]+6
+
+            temp_df["event"] = 0
+            for index, row in df_events.iterrows():
+                a = row[0]
+                b = row[1]
+                temp_df.at[a, "event"] = b
+            temp_df.drop(temp_df.columns[0], axis=1, inplace=True)
+            temp_i_df = temp_i_df.append(temp_df)
+        temp_i_df = prep_df(temp_i_df)
+        list_exp.append(temp_i_df)
     return list_exp
 
 
@@ -415,16 +425,11 @@ if __name__ == "__main__":
     parser.add_argument("--seq_length_x", type=int, default=50, help="Sequence Length.", )
     parser.add_argument("--seq_length_y", type=int, default=50, help="Sequence Length.", )
     parser.add_argument("--y_start", type=int, default=1, help="Y pred start", )
-    parser.add_argument("--name_extra", type=str, default = "50_62_0before_or_after_7030")
+    parser.add_argument("--name_extra", type=str, default = "50_62_0before_or_after_4060_all")
     parser.add_argument("--dow", action='store_true', )
     creating_testing = False
 
     args = parser.parse_args()
-    # if os.path.exists(args.output_dir):
-    #     reply = str(input(f'{args.output_dir} exists. Do you want to overwrite it? (y/n)')).lower().strip()
-    #     if reply[0] != 'y': exit
-    # else:
-    #     os.makedirs(args.output_dir)
     if not creating_testing:
         generate_train_val_test(args)
     else:
